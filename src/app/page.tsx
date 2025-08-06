@@ -360,119 +360,239 @@ export default function Home() {
               </div>
               
               <div className="p-6 space-y-6">
-                {/* Status Badge */}
-                <div className="flex justify-center">
-                  <Badge variant={getStatusColor(selectedOrder.status)} className="flex items-center gap-1 text-sm py-1 px-3">
-                    {getStatusIcon(selectedOrder.status)}
-                    {getStatusLabel(selectedOrder.status)}
-                  </Badge>
+                {/* Visual Progress Tracker */}
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20 rounded-lg p-6">
+                  <h3 className="font-semibold mb-4 text-center">Delivery Order Progress</h3>
+                  <div className="relative">
+                    {/* Progress Line */}
+                    <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-300 dark:bg-gray-700"></div>
+                    <div 
+                      className="absolute top-5 left-0 h-0.5 bg-green-500 transition-all duration-500"
+                      style={{
+                        width: selectedOrder.status === 'created' ? '0%' :
+                               selectedOrder.status === 'at_area_office' ? '25%' :
+                               selectedOrder.status === 'at_project_office' ? '50%' :
+                               selectedOrder.status === 'received_at_project_office' ? '75%' :
+                               selectedOrder.status === 'at_road_sale' ? '100%' : '0%'
+                      }}
+                    ></div>
+                    
+                    {/* Progress Steps */}
+                    <div className="relative flex justify-between">
+                      {[
+                        { status: 'created', label: 'Created', icon: Package },
+                        { status: 'at_area_office', label: 'Area Office', icon: Building },
+                        { status: 'at_project_office', label: 'Project Office', icon: Building },
+                        { status: 'received_at_project_office', label: 'Received', icon: CheckCircle },
+                        { status: 'at_road_sale', label: 'Road Sale', icon: CheckCircle }
+                      ].map((step, index) => {
+                        const Icon = step.icon;
+                        const isPassed = ['created', 'at_area_office', 'at_project_office', 'received_at_project_office', 'at_road_sale'].indexOf(selectedOrder.status) >= index;
+                        const isCurrent = selectedOrder.status === step.status;
+                        
+                        return (
+                          <div key={step.status} className="flex flex-col items-center">
+                            <div className={`
+                              w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+                              ${isPassed ? 'bg-green-500 text-white' : 'bg-gray-300 dark:bg-gray-700 text-gray-500'}
+                              ${isCurrent ? 'ring-4 ring-green-300 dark:ring-green-700' : ''}
+                            `}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <span className={`
+                              text-xs mt-2 text-center
+                              ${isPassed ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500'}
+                            `}>
+                              {step.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Current Status */}
+                  <div className="mt-6 text-center">
+                    <Badge variant={getStatusColor(selectedOrder.status)} className="text-sm py-1 px-3">
+                      Current Status: {getStatusLabel(selectedOrder.status)}
+                    </Badge>
+                  </div>
                 </div>
 
                 {/* Order Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Party</p>
-                    <p className="font-medium flex items-center gap-2">
-                      <Building className="h-4 w-4 text-muted-foreground" />
-                      {selectedOrder.party?.name || "-"}
-                    </p>
+                <div className="bg-muted/30 rounded-lg p-4">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Order Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Party</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        {selectedOrder.party?.name || "-"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Authorized Person</p>
+                      <p className="font-medium">{selectedOrder.authorizedPerson}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Valid From</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {new Date(selectedOrder.validFrom).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Valid To</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {new Date(selectedOrder.validTo).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Authorized Person</p>
-                    <p className="font-medium">{selectedOrder.authorizedPerson}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Valid From</p>
-                    <p className="font-medium flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {new Date(selectedOrder.validFrom).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Valid To</p>
-                    <p className="font-medium flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {new Date(selectedOrder.validTo).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                {selectedOrder.notes && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Notes</p>
+                  {selectedOrder.notes && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground mb-1">Notes</p>
                       <p className="text-sm">{selectedOrder.notes}</p>
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
 
-                {/* Workflow Progress */}
-                {selectedOrder.workflowHistory && selectedOrder.workflowHistory.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="font-semibold mb-4">Workflow Progress</h3>
-                      <div className="space-y-3">
-                        {selectedOrder.workflowHistory.map((history: any, index: number) => (
-                          <div key={history.id} className="flex items-start gap-3">
-                            <div className="mt-1">
-                              {index === 0 ? (
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                              ) : (
-                                <div className="h-5 w-5 rounded-full bg-muted border-2 border-border" />
+                {/* Detailed Activity Log */}
+                <div>
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Detailed Activity Log
+                  </h3>
+                  <div className="space-y-3">
+                    {/* Combine workflow history and issues into a single timeline */}
+                    {(() => {
+                      const allEvents = [];
+                      
+                      // Add workflow events
+                      if (selectedOrder.workflowHistory) {
+                        selectedOrder.workflowHistory.forEach((history: any) => {
+                          allEvents.push({
+                            type: 'workflow',
+                            date: new Date(history.createdAt),
+                            title: `Status changed to ${getStatusLabel(history.toStatus)}`,
+                            description: history.comments || 'Status updated',
+                            icon: ArrowRight,
+                            color: 'text-blue-600'
+                          });
+                        });
+                      }
+                      
+                      // Add issue events
+                      if (selectedOrder.issues) {
+                        selectedOrder.issues.forEach((issue: any) => {
+                          allEvents.push({
+                            type: 'issue',
+                            date: new Date(issue.createdAt),
+                            title: `Issue Reported: ${issue.issueType || 'General'}`,
+                            description: issue.description,
+                            status: issue.status,
+                            resolution: issue.resolution,
+                            icon: AlertCircle,
+                            color: issue.status === 'OPEN' ? 'text-yellow-600' : 'text-green-600'
+                          });
+                          
+                          if (issue.resolvedAt) {
+                            allEvents.push({
+                              type: 'resolution',
+                              date: new Date(issue.resolvedAt),
+                              title: 'Issue Resolved',
+                              description: issue.resolution,
+                              icon: CheckCircle,
+                              color: 'text-green-600'
+                            });
+                          }
+                        });
+                      }
+                      
+                      // Sort events by date (newest first)
+                      allEvents.sort((a, b) => b.date.getTime() - a.date.getTime());
+                      
+                      return allEvents.map((event, index) => {
+                        const Icon = event.icon;
+                        return (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="flex gap-3"
+                          >
+                            {/* Timeline connector */}
+                            <div className="relative">
+                              <div className={`mt-1 ${event.color}`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              {index !== allEvents.length - 1 && (
+                                <div className="absolute top-7 left-2.5 w-0.5 h-full bg-gray-300 dark:bg-gray-700"></div>
                               )}
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium">
-                                {getStatusLabel(history.toStatus)}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(history.createdAt).toLocaleString()}
-                              </p>
-                              {history.comments && (
-                                <p className="text-sm mt-1">{history.comments}</p>
-                              )}
+                            
+                            {/* Event content */}
+                            <div className="flex-1 pb-4">
+                              <div className={`
+                                p-3 rounded-lg border
+                                ${event.type === 'issue' && event.status === 'OPEN' ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800' :
+                                  event.type === 'workflow' ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800' :
+                                  'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}
+                              `}>
+                                <div className="flex justify-between items-start mb-1">
+                                  <p className="font-medium text-sm">{event.title}</p>
+                                  <time className="text-xs text-muted-foreground">
+                                    {event.date.toLocaleString()}
+                                  </time>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{event.description}</p>
+                                {event.status === 'OPEN' && (
+                                  <Badge variant="destructive" className="mt-2 text-xs">
+                                    Pending Resolution
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          </motion.div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  
+                  {(!selectedOrder.workflowHistory || selectedOrder.workflowHistory.length === 0) && 
+                   (!selectedOrder.issues || selectedOrder.issues.length === 0) && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No activity recorded yet</p>
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
 
-                {/* Issues */}
-                {selectedOrder.issues && selectedOrder.issues.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="font-semibold mb-4 flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                        Reported Issues
-                      </h3>
-                      <div className="space-y-2">
-                        {selectedOrder.issues.map((issue: any) => (
-                          <div key={issue.id} className="p-3 bg-muted rounded-lg">
-                            <div className="flex justify-between items-start mb-2">
-                              <p className="font-medium">{issue.description}</p>
-                              <Badge variant={issue.status === "OPEN" ? "destructive" : "default"}>
-                                {issue.status}
-                              </Badge>
-                            </div>
-                            {issue.resolution && (
-                              <p className="text-sm text-muted-foreground">
-                                Resolution: {issue.resolution}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Reported on {new Date(issue.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
+                {/* Summary Statistics */}
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold">
+                      {selectedOrder.workflowHistory?.length || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Status Changes</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {selectedOrder.issues?.filter((i: any) => i.status === 'OPEN').length || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Open Issues</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {selectedOrder.issues?.filter((i: any) => i.status === 'RESOLVED').length || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Resolved Issues</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </motion.div>
