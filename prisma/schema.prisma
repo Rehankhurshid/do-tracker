@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String            @id @default(cuid())
+  username        String            @unique
+  password        String?           // Made optional for email invitation flow
+  email           String?           @unique
+  role            String            // ADMIN, AREA_OFFICE, PROJECT_OFFICE, ROAD_SALE
+  isActive        Boolean           @default(true)
+  resetToken      String?           @unique
+  resetTokenExpiry DateTime?
+  isPasswordSet   Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  createdOrders   DeliveryOrder[]   @relation("CreatedBy")
+  reportedIssues  Issue[]           @relation("ReportedBy")
+  resolvedIssues  Issue[]           @relation("ResolvedBy")
+  workflowActions WorkflowHistory[]
+}
+
+model Party {
+  id              String          @id @default(cuid())
+  name            String          @unique
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  deliveryOrders  DeliveryOrder[]
+}
+
+model DeliveryOrder {
+  id                String            @id @default(cuid())
+  doNumber          String            @unique
+  partyId           String
+  party             Party             @relation(fields: [partyId], references: [id])
+  authorizedPerson  String
+  validFrom         DateTime
+  validTo           DateTime
+  status            String            @default("CREATED") // CREATED, AT_AREA_OFFICE, AT_PROJECT_OFFICE, RECEIVED_AT_PROJECT_OFFICE, AT_ROAD_SALE
+  items             String?           // JSON string of items array
+  notes             String?
+  createdById       String
+  createdBy         User              @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  issues            Issue[]
+  workflowHistory   WorkflowHistory[]
+}
+
+model Issue {
+  id              String        @id @default(cuid())
+  deliveryOrderId String
+  deliveryOrder   DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  issueType       String        @default("OTHER") // QUALITY, QUANTITY, DOCUMENTATION, DAMAGE, DELAY, OTHER
+  description     String
+  status          String        @default("OPEN") // OPEN, RESOLVED
+  reportedById    String
+  reportedBy      User          @relation("ReportedBy", fields: [reportedById], references: [id])
+  resolvedById    String?
+  resolvedBy      User?         @relation("ResolvedBy", fields: [resolvedById], references: [id])
+  resolution      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model WorkflowHistory {
+  id              String        @id @default(cuid())
+  deliveryOrderId String
+  deliveryOrder   DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  fromStatus      String        // Status values
+  toStatus        String        // Status values
+  actionById      String
+  actionBy        User          @relation(fields: [actionById], references: [id])
+  notes           String?
+  createdAt       DateTime      @default(now())
+}
