@@ -1,103 +1,318 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Search, Package, Calendar, Building, CheckCircle, AlertCircle, Clock, ArrowRight } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResult, setSearchResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
+
+    setLoading(true);
+    setError("");
+    setSearchResult(null);
+
+    try {
+      const response = await fetch(`/api/public/delivery-orders/${searchTerm}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResult(data);
+      } else if (response.status === 404) {
+        setError("Delivery order not found. Please check the DO number.");
+      } else {
+        setError("An error occurred. Please try again.");
+      }
+    } catch (error) {
+      setError("Failed to search. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "at_road_sale":
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case "created":
+      case "at_area_office":
+        return <Clock className="h-5 w-5 text-yellow-600" />;
+      default:
+        return <ArrowRight className="h-5 w-5 text-blue-600" />;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "created":
+        return "Created";
+      case "at_area_office":
+        return "At Area Office";
+      case "at_project_office":
+        return "At Project Office";
+      case "received_at_project_office":
+        return "Received at Project Office";
+      case "at_road_sale":
+        return "Completed - At Road Sale";
+      default:
+        return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "at_road_sale":
+        return "default";
+      case "created":
+      case "at_area_office":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <Package className="h-6 w-6" />
+              <span className="font-bold text-xl">DO Tracker</span>
+            </div>
+            <Link href="/login">
+              <Button variant="outline">Staff Login</Button>
+            </Link>
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto"
+        >
+          {/* Hero Section */}
+          <div className="text-center space-y-4 mb-12">
+            <h1 className="text-4xl font-bold">Track Your Delivery Order</h1>
+            <p className="text-xl text-muted-foreground">
+              Enter your delivery order number to check its current status
+            </p>
+          </div>
+
+          {/* Search Form */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Search Delivery Order</CardTitle>
+              <CardDescription>
+                Enter the DO number provided to you
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSearch} className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Enter DO number (e.g., DO-001)"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                    disabled={loading}
+                  />
+                </div>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Searching..." : "Search"}
+                </Button>
+              </form>
+              {error && (
+                <div className="mt-4 p-3 bg-destructive/10 text-destructive rounded-md flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {error}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Search Result */}
+          {searchResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-2xl">{searchResult.doNumber}</CardTitle>
+                      <CardDescription>Delivery Order Details</CardDescription>
+                    </div>
+                    <Badge variant={getStatusColor(searchResult.status)} className="flex items-center gap-1">
+                      {getStatusIcon(searchResult.status)}
+                      {getStatusLabel(searchResult.status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Order Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Party</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        {searchResult.party?.name || "-"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Authorized Person</p>
+                      <p className="font-medium">{searchResult.authorizedPerson}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Valid From</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {new Date(searchResult.validFrom).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Valid To</p>
+                      <p className="font-medium flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {new Date(searchResult.validTo).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {searchResult.notes && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Notes</p>
+                        <p className="text-sm">{searchResult.notes}</p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Workflow Progress */}
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-4">Workflow Progress</h3>
+                    <div className="space-y-3">
+                      {searchResult.workflowHistory?.map((history: any, index: number) => (
+                        <div key={history.id} className="flex items-start gap-3">
+                          <div className="mt-1">
+                            {index === 0 ? (
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <div className="h-5 w-5 rounded-full bg-muted border-2 border-border" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {getStatusLabel(history.toStatus)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(history.createdAt).toLocaleString()}
+                            </p>
+                            {history.comments && (
+                              <p className="text-sm mt-1">{history.comments}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Issues */}
+                  {searchResult.issues && searchResult.issues.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="font-semibold mb-4 flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-yellow-600" />
+                          Reported Issues
+                        </h3>
+                        <div className="space-y-2">
+                          {searchResult.issues.map((issue: any) => (
+                            <div key={issue.id} className="p-3 bg-muted rounded-lg">
+                              <div className="flex justify-between items-start mb-2">
+                                <p className="font-medium">{issue.description}</p>
+                                <Badge variant={issue.status === "OPEN" ? "destructive" : "default"}>
+                                  {issue.status}
+                                </Badge>
+                              </div>
+                              {issue.resolution && (
+                                <p className="text-sm text-muted-foreground">
+                                  Resolution: {issue.resolution}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Reported on {new Date(issue.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Information Cards */}
+          {!searchResult && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Track Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Monitor your delivery order as it moves through different departments
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">View History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    See the complete workflow history of your delivery order
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Issue Tracking</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Check if there are any issues reported on your delivery order
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </motion.div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
