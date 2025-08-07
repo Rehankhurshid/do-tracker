@@ -3,11 +3,16 @@ import { prisma } from '@/lib/db';
 import { verifyPassword, generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  console.log('Login attempt started');
+  
   try {
     const body = await request.json();
     const { username, password } = body;
 
+    console.log('Login attempt for username:', username);
+
     if (!username || !password) {
+      console.log('Missing username or password');
       return NextResponse.json(
         { error: 'Username and password are required' },
         { status: 400 }
@@ -15,11 +20,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by username
+    console.log('Looking up user in database...');
     const user = await prisma.user.findUnique({
       where: { username },
     });
 
+    console.log('User found:', user ? 'Yes' : 'No');
+    console.log('User active:', user?.isActive);
+
     if (!user || !user.isActive) {
+      console.log('User not found or inactive');
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -27,7 +37,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if password is set
+    console.log('Password set:', user.isPasswordSet);
+    console.log('Has password:', !!user.password);
+    
     if (!user.password || !user.isPasswordSet) {
+      console.log('Password not set for user');
       return NextResponse.json(
         { error: 'Password not set. Please use the password reset link sent to your email.' },
         { status: 401 }
@@ -35,9 +49,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
+    console.log('Verifying password...');
     const isValidPassword = await verifyPassword(password, user.password);
+    console.log('Password valid:', isValidPassword);
 
     if (!isValidPassword) {
+      console.log('Invalid password');
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -70,10 +87,21 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Check if it's a database connection error
+    if (error.message?.includes('connect') || error.message?.includes('ECONNREFUSED')) {
+      return NextResponse.json(
+        { error: 'Database connection error. Please check server logs.' },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
