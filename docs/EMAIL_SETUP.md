@@ -1,9 +1,11 @@
 # Email Setup Guide for DO Tracker
 
 ## Overview
+
 DO Tracker uses **Resend** for sending transactional emails like password reset links. This guide will help you set up email functionality.
 
 ## Current Email Capabilities
+
 ✅ **Password Reset Emails** - Fully implemented and ready to use
 ✅ **New DO Created Notifications (Area Office)** - Implemented
 ❌ **Issue Alert Emails** - Not yet implemented
@@ -11,16 +13,19 @@ DO Tracker uses **Resend** for sending transactional emails like password reset 
 ## Setup Instructions
 
 ### Step 1: Create a Resend Account
+
 1. Go to [https://resend.com](https://resend.com)
 2. Sign up for a free account (includes 100 emails/day)
 3. Verify your email address
 
 ### Step 2: Get Your API Key
+
 1. After logging in to Resend, go to the [API Keys page](https://resend.com/api-keys)
 2. Create a new API key
 3. Copy the API key (starts with `re_`)
 
 ### Step 3: Configure Environment Variables
+
 Add these to your `.env` file:
 
 ```env
@@ -40,6 +45,7 @@ AREA_OFFICE_NOTIFICATION_EMAILS="area1@yourorg.com, area2@yourorg.com"
 ```
 
 ### Step 4: Verify Domain (For Production)
+
 1. In Resend dashboard, go to [Domains](https://resend.com/domains)
 2. Add your domain
 3. Add the DNS records provided by Resend to your domain
@@ -49,6 +55,7 @@ AREA_OFFICE_NOTIFICATION_EMAILS="area1@yourorg.com, area2@yourorg.com"
 ## Testing Email Functionality
 
 ### Test Password Reset
+
 1. Start your development server: `npm run dev`
 2. Go to `/login`
 3. Click "Forgot Password?"
@@ -58,12 +65,14 @@ AREA_OFFICE_NOTIFICATION_EMAILS="area1@yourorg.com, area2@yourorg.com"
 ### Troubleshooting
 
 #### Emails not sending?
+
 - Check if `RESEND_API_KEY` is set correctly in `.env`
 - Verify the API key is active in Resend dashboard
 - Check console logs for error messages
 - Ensure you haven't exceeded the free tier limit (100 emails/day)
 
 #### Email going to spam?
+
 - Verify your domain with Resend
 - Use a proper FROM address with your domain
 - Ensure email content is not triggering spam filters
@@ -71,6 +80,7 @@ AREA_OFFICE_NOTIFICATION_EMAILS="area1@yourorg.com, area2@yourorg.com"
 ## Email Templates
 
 Current email templates:
+
 - **Password Reset Email** (`/src/lib/email.ts`)
   - Professional HTML template
   - Mobile responsive
@@ -80,8 +90,9 @@ Current email templates:
 ## API Usage
 
 ### Send Password Reset Email
+
 ```typescript
-import { sendEmail, generatePasswordResetEmail } from '@/lib/email';
+import { sendEmail, generatePasswordResetEmail } from "@/lib/email";
 
 // Generate email HTML
 const emailHtml = generatePasswordResetEmail(resetLink, username);
@@ -89,7 +100,7 @@ const emailHtml = generatePasswordResetEmail(resetLink, username);
 // Send email
 const result = await sendEmail({
   to: userEmail,
-  subject: 'Password Reset Request',
+  subject: "Password Reset Request",
   html: emailHtml,
 });
 ```
@@ -97,6 +108,7 @@ const result = await sendEmail({
 ## Production Checklist
 
 Before deploying to production:
+
 - [ ] Get a Resend production API key
 - [ ] Verify your domain with Resend
 - [ ] Update `EMAIL_FROM` to use your domain
@@ -108,11 +120,13 @@ Before deploying to production:
 ## Email Service Alternatives
 
 If you prefer a different email service, you can easily switch by:
+
 1. Installing the appropriate package (`nodemailer`, `@sendgrid/mail`, etc.)
 2. Updating `/src/lib/email.ts` to use the new service
 3. Updating environment variables
 
 Popular alternatives:
+
 - SendGrid
 - Mailgun
 - Amazon SES
@@ -122,9 +136,11 @@ Popular alternatives:
 ## Support
 
 For Resend-specific issues:
+
 - [Resend Documentation](https://resend.com/docs)
 - [Resend Status Page](https://status.resend.com)
 
 For DO Tracker email issues:
+
 - Check `/src/lib/email.ts` for email implementation
 - Check `/src/app/api/auth/request-reset/route.ts` for password reset logic

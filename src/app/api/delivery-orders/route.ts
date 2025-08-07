@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const partyId = searchParams.get('partyId');
 
     // Build filter conditions based on user role
-  const whereConditions: Record<string, unknown> = {};
+    const whereConditions: Record<string, any> = {};
 
     // Role-based filtering
     switch (payload.role) {
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
           authorizedPerson: deliveryOrder.authorizedPerson,
           validFrom: deliveryOrder.validFrom,
           validTo: deliveryOrder.validTo,
-          createdBy: deliveryOrder.createdBy?.username || 'Unknown',
+          createdBy: deliveryOrder.createdBy.username || 'Unknown',
           notes: deliveryOrder.notes,
         });
 
