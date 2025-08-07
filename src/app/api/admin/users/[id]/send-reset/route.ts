@@ -9,7 +9,16 @@ export async function POST(
 ) {
   try {
     // Verify admin authentication
-    const user = await verifyToken(request);
+    const token = request.cookies.get('token')?.value;
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    const user = verifyToken(token);
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Unauthorized' },
