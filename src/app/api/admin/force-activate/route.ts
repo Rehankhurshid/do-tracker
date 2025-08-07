@@ -8,9 +8,21 @@ export async function GET(request: NextRequest) {
     const secret = searchParams.get('secret');
     const username = searchParams.get('username') || 'admin';
     
+    // Debug: Check what we're comparing
+    console.log('Received secret:', secret);
+    console.log('Expected secret exists:', !!process.env.JWT_SECRET);
+    console.log('Secrets match:', secret === process.env.JWT_SECRET);
+    
     if (secret !== process.env.JWT_SECRET) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: 'Unauthorized',
+          debug: {
+            receivedSecret: secret ? `${secret.substring(0, 5)}...` : 'none',
+            hasJwtSecret: !!process.env.JWT_SECRET,
+            nodeEnv: process.env.NODE_ENV
+          }
+        },
         { status: 401 }
       );
     }
