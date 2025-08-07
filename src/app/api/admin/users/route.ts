@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
+import { sendEmail, generatePasswordResetEmail } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
   try {
@@ -127,11 +128,21 @@ export async function POST(request: NextRequest) {
         isPasswordSet: false,
       };
 
-      // Here you would send an email with the reset link
-      // For now, we'll just log it
+      // Send welcome email with password setup link
       const resetLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-      console.log('Email would be sent to:', email);
-      console.log('Reset link:', resetLink);
+      const emailHtml = generatePasswordResetEmail(resetLink, username);
+      const emailResult = await sendEmail({
+        to: email,
+        subject: 'Welcome to DO Tracker - Set Your Password',
+        html: emailHtml,
+      });
+
+      if (!emailResult.success) {
+        console.error('Failed to send welcome email:', emailResult.error);
+        // Still create the user even if email fails
+      } else {
+        console.log('Welcome email sent successfully to:', email);
+      }
       
     } else {
       // Hash password for manual creation

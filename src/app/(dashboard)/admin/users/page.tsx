@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, UserCheck, UserX, Search, Mail, Key } from "lucide-react";
+import { Plus, Edit, Trash2, UserCheck, UserX, Search, Mail, Key, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,6 +125,36 @@ export default function UserManagementPage() {
       toast({
         title: "Error",
         description: "Failed to update user status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resendPasswordEmail = async (userId: string, username: string, email: string) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/send-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: "✅ Email Sent",
+          description: `Password setup email sent to ${email}`,
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "❌ Error",
+          description: error.error || "Failed to send email",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "Failed to send password reset email",
         variant: "destructive",
       });
     }
@@ -333,6 +363,16 @@ export default function UserManagementPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            {!user.isPasswordSet && user.email && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => resendPasswordEmail(user.id, user.username, user.email)}
+                                title="Resend password setup email"
+                              >
+                                <Mail className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -410,44 +450,57 @@ export default function UserManagementPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-3 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingUser(user);
-                          setFormData({
-                            username: user.username,
-                            email: user.email || "",
-                            password: "",
-                            role: user.role,
-                            sendInvite: false,
-                          });
-                          setDialogOpen(true);
-                        }}
-                        className="flex-1"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span className="ml-2">Edit</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleUserStatus(user.id, user.isActive)}
-                        className="flex-1"
-                      >
-                        {user.isActive ? (
-                          <>
-                            <UserX className="h-4 w-4 text-red-600" />
-                            <span className="ml-2">Deactivate</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck className="h-4 w-4 text-green-600" />
-                            <span className="ml-2">Activate</span>
-                          </>
-                        )}
-                      </Button>
+                    <div className="space-y-2 pt-3 border-t">
+                      {!user.isPasswordSet && user.email && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => resendPasswordEmail(user.id, user.username, user.email)}
+                          className="w-full"
+                        >
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Password Setup Email
+                        </Button>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingUser(user);
+                            setFormData({
+                              username: user.username,
+                              email: user.email || "",
+                              password: "",
+                              role: user.role,
+                              sendInvite: false,
+                            });
+                            setDialogOpen(true);
+                          }}
+                          className="flex-1"
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="ml-2">Edit</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleUserStatus(user.id, user.isActive)}
+                          className="flex-1"
+                        >
+                          {user.isActive ? (
+                            <>
+                              <UserX className="h-4 w-4 text-red-600" />
+                              <span className="ml-2">Deactivate</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="h-4 w-4 text-green-600" />
+                              <span className="ml-2">Activate</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
