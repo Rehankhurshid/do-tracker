@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DO Tracker - Keep Warm</title>
+    <script>
+        // Keep the Vercel functions warm by pinging them periodically
+        function warmup() {
+            // Warmup critical endpoints
+            fetch('/api/warmup').catch(() => {});
+            fetch('/api/auth/me').catch(() => {});
+            
+            console.log('Warmup ping sent at', new Date().toISOString());
+        }
+        
+        // Run warmup immediately
+        warmup();
+        
+        // Run warmup every 4 minutes (before Vercel's 5-minute cold start)
+        setInterval(warmup, 4 * 60 * 1000);
+    </script>
+</head>
+<body>
+    <h1>Keeping DO Tracker Warm</h1>
+    <p>This page keeps the Vercel functions warm to prevent cold starts.</p>
+    <p>Open this in a browser tab to maintain performance.</p>
+</body>
+</html>

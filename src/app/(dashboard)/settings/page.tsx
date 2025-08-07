@@ -92,7 +92,11 @@ export default function SettingsPage() {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch("/api/auth/me");
+      // Add cache option to fetch for better performance
+      const response = await fetch("/api/auth/me", {
+        cache: 'force-cache', // Use cached data when available
+        next: { revalidate: 60 } // Revalidate every 60 seconds
+      });
       if (response.ok) {
         const data = await response.json();
         setCurrentUser(data.user);

@@ -40,7 +40,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ user });
+    // Add cache headers for better performance
+    const response = NextResponse.json({ user });
+    
+    // Cache for 60 seconds on the client, revalidate in background
+    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate');
+    
+    return response;
   } catch (error) {
     console.error('Get user error:', error);
     return NextResponse.json(
