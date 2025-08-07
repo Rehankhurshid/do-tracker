@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { api } from "@/lib/api-client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,13 +41,7 @@ export default function LoginPage() {
   const checkUsername = async () => {
     setIsCheckingUser(true);
     try {
-      const response = await fetch("/api/auth/check-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: formData.username }),
-      });
-
-      const data = await response.json();
+      const data = await api.post("/api/auth/check-user", { username: formData.username });
       if (data.exists) {
         setUserInfo(data.user);
       } else {
@@ -83,15 +78,9 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      const data = await api.post("/api/auth/login", { username, password });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (data.success) {
         toast({
           title: "Success",
           description: "Login successful! Redirecting...",
@@ -114,17 +103,11 @@ export default function LoginPage() {
           default:
             router.push("/dashboard");
         }
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Invalid credentials",
-          variant: "destructive",
-        });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -58,13 +58,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set HTTP-only cookie
+    // Set HTTP-only cookie with proper production settings
     response.cookies.set({
       name: 'token',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax', // Use 'lax' for better compatibility with redirects
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
