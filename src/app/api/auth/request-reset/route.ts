@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { sendEmail, generatePasswordResetEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,11 +40,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Here you would send an email with the reset link
-    // For now, we'll just log it
+    // Generate reset link
     const resetLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-    console.log('Password reset email would be sent to:', email);
-    console.log('Reset link:', resetLink);
+    
+    // Send password reset email
+    const emailHtml = generatePasswordResetEmail(resetLink, user.username);
+    const emailResult = await sendEmail({
+      to: email,
+      subject: 'Password Reset Request - DO Tracker',
+      html: emailHtml,
+    });
+
+    if (!emailResult.success) {
+      console.error('Failed to send password reset email:', emailResult.error);
+      // Still return success to prevent email enumeration
+    } else {
+      console.log('Password reset email sent successfully to:', email);
+    }
 
     return NextResponse.json({
       success: true,
