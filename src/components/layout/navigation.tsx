@@ -59,6 +59,10 @@ export function Navigation({ user }: NavigationProps) {
       { label: "Dashboard", href: `/${user.role.toLowerCase().replace('_', '-')}`, icon: Home, mobileOnly: false },
     ];
 
+    const commonEndItems = [
+      { label: "Settings", href: "/settings", icon: Settings, mobileOnly: false },
+    ];
+
     switch (user.role) {
       case "ADMIN":
         return [
@@ -67,6 +71,7 @@ export function Navigation({ user }: NavigationProps) {
           { label: "Parties", href: "/admin/parties", icon: Building, mobileOnly: false },
           { label: "Orders", href: "/admin/delivery-orders", icon: Package, mobileOnly: false },
           { label: "Reports", href: "/admin/reports", icon: FileText, mobileOnly: false },
+          ...commonEndItems,
         ];
       case "AREA_OFFICE":
         return [
@@ -74,21 +79,24 @@ export function Navigation({ user }: NavigationProps) {
           { label: "Create", href: "/area-office/create", icon: Plus, mobileOnly: false },
           { label: "Process", href: "/area-office/process", icon: Package, mobileOnly: false },
           { label: "Issues", href: "/area-office/issues", icon: AlertCircle, mobileOnly: false },
+          ...commonEndItems,
         ];
       case "PROJECT_OFFICE":
         return [
           ...baseItems,
           { label: "Process", href: "/project-office/process", icon: Package, mobileOnly: false },
           { label: "Issues", href: "/project-office/issues", icon: AlertCircle, mobileOnly: false },
+          ...commonEndItems,
         ];
       case "ROAD_SALE":
         return [
           ...baseItems,
           { label: "Process", href: "/road-sale/process", icon: Package, mobileOnly: false },
           { label: "Issues", href: "/road-sale/issues", icon: AlertCircle, mobileOnly: false },
+          ...commonEndItems,
         ];
       default:
-        return baseItems;
+        return [...baseItems, ...commonEndItems];
     }
   };
 
