@@ -5,7 +5,7 @@ DO Tracker uses **Resend** for sending transactional emails like password reset 
 
 ## Current Email Capabilities
 ✅ **Password Reset Emails** - Fully implemented and ready to use
-❌ **Order Status Notifications** - Not yet implemented
+✅ **New DO Created Notifications (Area Office)** - Implemented
 ❌ **Issue Alert Emails** - Not yet implemented
 
 ## Setup Instructions
@@ -33,6 +33,10 @@ EMAIL_FROM="DO Tracker <onboarding@resend.dev>"
 
 # For production: Use your verified domain
 # EMAIL_FROM="DO Tracker <noreply@yourdomain.com>"
+
+# Optional: Area Office notification recipients (comma-separated)
+# If not set, the app will send to all active AREA_OFFICE users with an email
+AREA_OFFICE_NOTIFICATION_EMAILS="area1@yourorg.com, area2@yourorg.com"
 ```
 
 ### Step 4: Verify Domain (For Production)
@@ -99,6 +103,7 @@ Before deploying to production:
 - [ ] Update `NEXTAUTH_URL` to your production URL
 - [ ] Test email delivery in production environment
 - [ ] Monitor email delivery rates in Resend dashboard
+- [ ] (If desired) Configure AREA_OFFICE_NOTIFICATION_EMAILS to control recipients
 
 ## Email Service Alternatives
 

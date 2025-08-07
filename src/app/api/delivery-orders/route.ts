@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { generateDOCreatedEmail, sendEmail } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     const partyId = searchParams.get('partyId');
 
     // Build filter conditions based on user role
-    let whereConditions: any = {};
+  const whereConditions: Record<string, unknown> = {};
 
     // Role-based filtering
     switch (payload.role) {
@@ -174,19 +175,63 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Fire-and-forget email notification to Area Office
+    (async () => {
+      try {
+        // Preferred recipients via env: comma-separated list
+        const configured = process.env.AREA_OFFICE_NOTIFICATION_EMAILS?.split(',').map(e => e.trim()).filter(Boolean) || [];
+
+        let recipients: string[] = configured;
+        if (recipients.length === 0) {
+          // Fallback: all active AREA_OFFICE users with email
+          const areaUsers = await prisma.user.findMany({
+            where: { role: 'AREA_OFFICE', isActive: true, email: { not: null } },
+            select: { email: true },
+          });
+          recipients = areaUsers.map(u => u.email!).filter(Boolean);
+        }
+
+        if (recipients.length === 0) {
+          console.warn('[DO Created Email] No recipients configured or found. Skipping email.');
+          return;
+        }
+
+        const html = generateDOCreatedEmail({
+          doNumber: deliveryOrder.doNumber,
+          partyName: deliveryOrder.party?.name,
+          authorizedPerson: deliveryOrder.authorizedPerson,
+          validFrom: deliveryOrder.validFrom,
+          validTo: deliveryOrder.validTo,
+          createdBy: deliveryOrder.createdBy?.username || 'Unknown',
+          notes: deliveryOrder.notes,
+        });
+
+        const subject = `New DO #${deliveryOrder.doNumber} created`;
+
+        // Send individually to avoid revealing recipients
+        for (const to of recipients) {
+          const res = await sendEmail({ to, subject, html });
+          if (!res.success) {
+            console.error('[DO Created Email] Failed for', to, res.error);
+          }
+        }
+      } catch (err) {
+        console.error('[DO Created Email] Notification error:', err);
+      }
+    })();
+
     return NextResponse.json(deliveryOrder, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating delivery order:', error);
-    
+    const err = error as { message?: string } | null;
     // Return more detailed error in development
     const errorMessage = process.env.NODE_ENV === 'development' 
-      ? error.message || 'Internal server error'
+      ? (err?.message || 'Internal server error')
       : 'Internal server error';
-    
     return NextResponse.json(
       { 
         error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
       },
       { status: 500 }
     );
