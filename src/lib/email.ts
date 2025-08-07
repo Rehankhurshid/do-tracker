@@ -15,6 +15,14 @@ export async function sendEmail({ to, subject, html, from }: SendEmailOptions) {
     // Use your verified domain or the default Resend domain
     const fromEmail = from || process.env.EMAIL_FROM || 'DO Tracker <onboarding@resend.dev>';
     
+    console.log('Attempting to send email:', {
+      from: fromEmail,
+      to,
+      subject,
+      hasApiKey: !!process.env.RESEND_API_KEY,
+      apiKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 10) + '...',
+    });
+    
     const data = await resend.emails.send({
       from: fromEmail,
       to,
@@ -22,9 +30,21 @@ export async function sendEmail({ to, subject, html, from }: SendEmailOptions) {
       html,
     });
 
+    console.log('Email sent successfully:', {
+      id: data.id,
+      to,
+      from: fromEmail,
+    });
+
     return { success: true, data };
-  } catch (error) {
-    console.error('Failed to send email:', error);
+  } catch (error: any) {
+    console.error('Failed to send email - Full error:', {
+      error: error.message || error,
+      statusCode: error.statusCode,
+      name: error.name,
+      to,
+      from: from || process.env.EMAIL_FROM || 'DO Tracker <onboarding@resend.dev>',
+    });
     return { success: false, error };
   }
 }
