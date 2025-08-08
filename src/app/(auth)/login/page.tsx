@@ -143,6 +143,13 @@ export default function LoginPage() {
       description: "Process & forward orders"
     },
     {
+      username: "cisf",
+      role: "CISF Security",
+      icon: Shield,
+      color: "bg-indigo-500 hover:bg-indigo-600",
+      description: "Security approval"
+    },
+    {
       username: "road_sale",
       role: "Road Sale",
       icon: Truck,
@@ -345,7 +352,7 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {testUsers.map((user) => {
                 const Icon = user.icon;
                 return (

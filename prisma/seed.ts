@@ -49,6 +49,20 @@ async function main() {
     },
   });
 
+  // Create CISF user
+  const cisf = await prisma.user.upsert({
+    where: { username: 'cisf' },
+    update: {},
+    create: {
+      username: 'cisf',
+      password: hashedPassword,
+      email: 'cisf@orderflow.com',
+      role: 'CISF',
+      isActive: true,
+      isPasswordSet: true,
+    },
+  });
+
   // Create road sale user
   const roadSale = await prisma.user.upsert({
     where: { username: 'road_sale' },
@@ -93,6 +107,7 @@ async function main() {
   console.log('- admin (password: admin123)');
   console.log('- area_office (password: admin123)');
   console.log('- project_office (password: admin123)');
+  console.log('- cisf (password: admin123)');
   console.log('- road_sale (password: admin123)');
   console.log('\nParties created:');
   console.log('- ABC Corporation');
