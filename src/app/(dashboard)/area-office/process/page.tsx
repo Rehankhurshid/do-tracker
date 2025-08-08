@@ -88,6 +88,7 @@ export default function ProcessDOsPage() {
     orderNumber: string;
   }>({ open: false, orderId: null, orderNumber: "" });
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if coming from create page
@@ -309,6 +310,7 @@ export default function ProcessDOsPage() {
     if (!deleteDialog.orderId) return;
 
     setIsDeletingOrder(true);
+    setDeletingOrderId(deleteDialog.orderId); // Track which order is being deleted
     try {
       const response = await fetch(`/api/delivery-orders/${deleteDialog.orderId}/delete`, {
         method: "DELETE",
@@ -343,6 +345,7 @@ export default function ProcessDOsPage() {
       });
     } finally {
       setIsDeletingOrder(false);
+      setDeletingOrderId(null); // Clear the tracking
     }
   };
 
@@ -555,9 +558,14 @@ export default function ProcessDOsPage() {
                             orderNumber: order.doNumber,
                           });
                         }}
+                        disabled={deletingOrderId === order.id}
                         className="text-red-600 hover:text-red-700"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {deletingOrderId === order.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </>
                   )}
@@ -817,9 +825,14 @@ export default function ProcessDOsPage() {
                             orderNumber: order.doNumber,
                           });
                         }}
+                        disabled={deletingOrderId === order.id}
                         className="text-red-600 hover:text-red-700"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {deletingOrderId === order.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </>
                   )}
