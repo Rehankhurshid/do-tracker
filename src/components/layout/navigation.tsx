@@ -51,8 +51,26 @@ export function Navigation({ user }: NavigationProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    try {
+      // Call logout API with credentials to ensure cookies are sent
+      const response = await fetch("/api/auth/logout", { 
+        method: "POST",
+        credentials: 'include' // Ensure cookies are included
+      });
+      
+      if (response.ok) {
+        // Force a hard navigation to clear all client-side state
+        window.location.href = "/login";
+      } else {
+        console.error('Logout failed:', response.status);
+        // Still redirect even if logout fails
+        window.location.href = "/login";
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback to hard redirect
+      window.location.href = "/login";
+    }
   };
 
   const getNavigationItems = () => {

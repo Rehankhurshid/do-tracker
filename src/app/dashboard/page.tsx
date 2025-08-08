@@ -9,8 +9,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Check user role from cookie/token and redirect
-    fetch("/api/auth/me")
-      .then((res) => res.json())
+    fetch("/api/auth/me", {
+      credentials: 'include' // Ensure cookies are sent
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Not authenticated');
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.user) {
           switch (data.user.role) {
@@ -23,6 +30,9 @@ export default function DashboardPage() {
             case "PROJECT_OFFICE":
               router.push("/project-office");
               break;
+            case "CISF":
+              router.push("/cisf");
+              break;
             case "ROAD_SALE":
               router.push("/road-sale");
               break;
@@ -33,7 +43,8 @@ export default function DashboardPage() {
           router.push("/login");
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Auth check failed:', error);
         router.push("/login");
       });
   }, [router]);
