@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, Truck, AlertCircle, Clock, CheckCircle, FileText, Package, Sparkles, ArrowRight, Loader2, Send, MessageSquare, Plus, AlertTriangle, ChevronDown, ChevronUp, XCircle, CheckCircle2 } from "lucide-react";
+import { Eye, Truck, AlertCircle, Clock, CheckCircle, FileText, Package, Sparkles, ArrowRight, Loader2, Send, MessageSquare, Plus, AlertTriangle, ChevronDown, ChevronUp, XCircle, CheckCircle2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -72,6 +82,12 @@ export default function ProcessDOsPage() {
     open: boolean;
     order: any | null;
   }>({ open: false, order: null });
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    orderId: string | null;
+    orderNumber: string;
+  }>({ open: false, orderId: null, orderNumber: "" });
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   useEffect(() => {
     // Check if coming from create page
@@ -289,6 +305,47 @@ export default function ProcessDOsPage() {
     return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.className}`}>{config.label}</span>;
   };
 
+  const deleteDeliveryOrder = async () => {
+    if (!deleteDialog.orderId) return;
+
+    setIsDeletingOrder(true);
+    try {
+      const response = await fetch(`/api/delivery-orders/${deleteDialog.orderId}/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: "✅ Delivery Order Deleted",
+          description: `DO #${deleteDialog.orderNumber} has been deleted successfully`,
+        });
+        
+        // Close dialog
+        setDeleteDialog({ open: false, orderId: null, orderNumber: "" });
+        
+        // Refresh the list
+        await fetchDeliveryOrders();
+      } else {
+        const data = await response.json();
+        toast({
+          title: "❌ Error",
+          description: data.error || "Failed to delete delivery order",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: "Something went wrong while deleting",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingOrder(false);
+    }
+  };
+
   const forwardToProjectOffice = async () => {
     const orderId = confirmDialog.orderId;
     if (!orderId) return;
@@ -471,22 +528,38 @@ export default function ProcessDOsPage() {
                     <Eye className="h-4 w-4" />
                   </Button>
                   {order.status === "at_area_office" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setReportIssueDialog({
-                          open: true,
-                          orderId: order.id,
-                          orderNumber: order.doNumber,
-                          issueType: "OTHER",
-                          description: "",
-                        });
-                      }}
-                      className="text-yellow-600 hover:text-yellow-700"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setReportIssueDialog({
+                            open: true,
+                            orderId: order.id,
+                            orderNumber: order.doNumber,
+                            issueType: "OTHER",
+                            description: "",
+                          });
+                        }}
+                        className="text-yellow-600 hover:text-yellow-700"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDeleteDialog({
+                            open: true,
+                            orderId: order.id,
+                            orderNumber: order.doNumber,
+                          });
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   {canForward(order) && (
                     <Button
@@ -716,23 +789,39 @@ export default function ProcessDOsPage() {
                     <span className="ml-1">View</span>
                   </Button>
                   {order.status === "at_area_office" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setReportIssueDialog({
-                          open: true,
-                          orderId: order.id,
-                          orderNumber: order.doNumber,
-                          issueType: "OTHER",
-                          description: "",
-                        });
-                      }}
-                      className="flex-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      <span className="ml-1">Issue</span>
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setReportIssueDialog({
+                            open: true,
+                            orderId: order.id,
+                            orderNumber: order.doNumber,
+                            issueType: "OTHER",
+                            description: "",
+                          });
+                        }}
+                        className="flex-1"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span className="ml-1">Issue</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDeleteDialog({
+                            open: true,
+                            orderId: order.id,
+                            orderNumber: order.doNumber,
+                          });
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   {canForward(order) && (
                     <Button
@@ -1296,6 +1385,58 @@ export default function ProcessDOsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !isDeletingOrder && setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Delete Delivery Order
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Are you sure you want to delete delivery order <strong>#{deleteDialog.orderNumber}</strong>?
+              </p>
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                  ⚠️ This action cannot be undone
+                </p>
+                <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5 mt-2">
+                  <li className="list-disc">The delivery order will be permanently deleted</li>
+                  <li className="list-disc">All associated issues will also be deleted</li>
+                  <li className="list-disc">This action cannot be reversed</li>
+                </ul>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Note:</strong> You can only delete delivery orders that haven't been forwarded yet.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingOrder}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteDeliveryOrder}
+              disabled={isDeletingOrder}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingOrder ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete DO
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
