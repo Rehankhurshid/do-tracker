@@ -1,10 +1,12 @@
-export type UserRole = 'ADMIN' | 'AREA_OFFICE' | 'PROJECT_OFFICE' | 'ROAD_SALE';
+export type UserRole = 'ADMIN' | 'AREA_OFFICE' | 'PROJECT_OFFICE' | 'CISF' | 'ROAD_SALE';
 
 export type DOStatus = 
   | 'CREATED' 
   | 'AT_AREA_OFFICE' 
-  | 'AT_PROJECT_OFFICE' 
-  | 'RECEIVED_AT_PROJECT_OFFICE' 
+  | 'PENDING_APPROVAL'  // Waiting for both Project Office and CISF approval
+  | 'PROJECT_APPROVED'  // Project Office approved, waiting for CISF
+  | 'CISF_APPROVED'     // CISF approved, waiting for Project Office  
+  | 'BOTH_APPROVED'     // Both approved, ready for Road Sale
   | 'AT_ROAD_SALE';
 
 export type IssueStatus = 'OPEN' | 'RESOLVED';
@@ -39,6 +41,8 @@ export interface DeliveryOrder {
   validFrom: Date;
   validTo: Date;
   status: DOStatus;
+  projectApproved: boolean;
+  cisfApproved: boolean;
   notes?: string | null;
   createdById: string;
   createdBy?: User;

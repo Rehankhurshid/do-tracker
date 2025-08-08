@@ -303,7 +303,7 @@ export default function ProcessDOsPage() {
     setDeliveryOrders(prevOrders => 
       prevOrders.map(order => 
         order.id === orderId 
-          ? { ...order, status: 'at_project_office' }
+          ? { ...order, status: 'PENDING_APPROVAL' }
           : order
       )
     );
@@ -311,7 +311,7 @@ export default function ProcessDOsPage() {
     // Show immediate feedback
     toast({
       title: "⏳ Forwarding...",
-      description: `Forwarding DO #${orderToForward.doNumber} to Project Office`,
+      description: `Forwarding DO #${orderToForward.doNumber} to Project Office & CISF for approval`,
     });
 
     try {
@@ -319,8 +319,8 @@ export default function ProcessDOsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          toStatus: "at_project_office",
-          notes: forwardNote.trim() || "Forwarded to Project Office"
+          toStatus: "PENDING_APPROVAL",
+          notes: forwardNote.trim() || "Forwarded to Project Office and CISF for dual approval"
         }),
       });
 
@@ -334,7 +334,7 @@ export default function ProcessDOsPage() {
         
         toast({
           title: "✅ Success",
-          description: `DO #${orderToForward.doNumber} forwarded to Project Office`,
+          description: `DO #${orderToForward.doNumber} forwarded to Project Office & CISF for approval`,
         });
         
         // Refresh data to ensure consistency
@@ -862,10 +862,10 @@ export default function ProcessDOsPage() {
                 >
                   <Send className="h-5 w-5 text-primary" />
                 </motion.div>
-                Forward Delivery Order
+                Forward for Dual Approval
               </DialogTitle>
               <DialogDescription>
-                Are you sure you want to forward this delivery order to the Project Office?
+                Are you sure you want to forward this delivery order to Project Office & CISF for dual approval?
               </DialogDescription>
             </DialogHeader>
 
@@ -887,9 +887,14 @@ export default function ProcessDOsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Destination:</span>
-                  <Badge variant="secondary" className="text-xs">
-                    Project Office
-                  </Badge>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      Project Office
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      CISF
+                    </Badge>
+                  </div>
                 </div>
               </motion.div>
 
@@ -906,7 +911,7 @@ export default function ProcessDOsPage() {
                 </Label>
                 <Textarea
                   id="forward-note"
-                  placeholder="Add any notes or instructions for the Project Office..."
+                  placeholder="Add any notes or instructions for the Project Office & CISF..."
                   value={forwardNote}
                   onChange={(e) => setForwardNote(e.target.value)}
                   className="resize-none"
@@ -924,7 +929,7 @@ export default function ProcessDOsPage() {
                 <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    Once forwarded, the Project Office will be responsible for processing this delivery order.
+                    Once forwarded, both Project Office and CISF must approve this delivery order before it can proceed to Road Sale.
                   </p>
                 </div>
               </motion.div>

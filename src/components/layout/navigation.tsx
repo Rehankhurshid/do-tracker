@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   Plus,
   MoreVertical,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -86,6 +87,13 @@ export function Navigation({ user }: NavigationProps) {
           ...baseItems,
           { label: "Process", href: "/project-office/process", icon: Package, mobileOnly: false },
           { label: "Issues", href: "/project-office/issues", icon: AlertCircle, mobileOnly: false },
+          ...commonEndItems,
+        ];
+      case "CISF":
+        return [
+          ...baseItems,
+          { label: "Process", href: "/cisf/process", icon: Shield, mobileOnly: false },
+          { label: "Issues", href: "/cisf/issues", icon: AlertCircle, mobileOnly: false },
           ...commonEndItems,
         ];
       case "ROAD_SALE":

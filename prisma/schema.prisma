@@ -15,7 +15,7 @@ model User {
   username        String            @unique
   password        String?           // Made optional for email invitation flow
   email           String?           @unique
-  role            String            // ADMIN, AREA_OFFICE, PROJECT_OFFICE, ROAD_SALE
+  role            String            // ADMIN, AREA_OFFICE, PROJECT_OFFICE, CISF, ROAD_SALE
   isActive        Boolean           @default(true)
   resetToken      String?           @unique
   resetTokenExpiry DateTime?
@@ -50,7 +50,9 @@ model DeliveryOrder {
   authorizedPerson  String
   validFrom         DateTime
   validTo           DateTime
-  status            String            @default("CREATED") // CREATED, AT_AREA_OFFICE, AT_PROJECT_OFFICE, RECEIVED_AT_PROJECT_OFFICE, AT_ROAD_SALE
+  status            String            @default("CREATED") // CREATED, AT_AREA_OFFICE, AT_PROJECT_OFFICE, AT_CISF, PROJECT_APPROVED, CISF_APPROVED, BOTH_APPROVED, AT_ROAD_SALE
+  projectApproved   Boolean           @default(false)
+  cisfApproved      Boolean           @default(false)
   items             String?           // JSON string of items array
   notes             String?
   createdById       String

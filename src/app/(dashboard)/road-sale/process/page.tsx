@@ -80,9 +80,9 @@ export default function RoadSaleProcessPage() {
       const response = await fetch("/api/delivery-orders");
       if (response.ok) {
         const data = await response.json();
-        // Filter for Road Sale - only show orders that reached road sale
+        // Filter for Road Sale - only show orders that have both approvals or have reached road sale
         const roadSaleOrders = data.filter((order: any) => 
-          order.status === 'at_road_sale'
+          order.status === 'AT_ROAD_SALE' || order.status === 'BOTH_APPROVED'
         );
         setDeliveryOrders(roadSaleOrders);
       } else {
