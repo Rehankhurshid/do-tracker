@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, UserCheck, UserX, Search, Mail, Key, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, UserCheck, UserX, Search, Mail, Key, RefreshCw, AlertTriangle, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +43,13 @@ export default function UserManagementPage() {
     role: "AREA_OFFICE" as UserRole,
     sendInvite: false,
   });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    userId: "",
+    username: "",
+    hasData: false,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchUserAndData();
@@ -127,6 +144,44 @@ export default function UserManagementPage() {
         description: "Failed to update user status",
         variant: "destructive",
       });
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!deleteDialog.userId) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/users/${deleteDialog.userId}/delete`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "✅ User Removed",
+          description: data.wasDeleted 
+            ? `${deleteDialog.username} has been permanently deleted`
+            : `${deleteDialog.username} has been deactivated (had associated data)`,
+        });
+        fetchUserAndData();
+        setDeleteDialog({ open: false, userId: "", username: "", hasData: false });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to delete user",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -402,6 +457,23 @@ export default function UserManagementPage() {
                                 <UserCheck className="h-4 w-4 text-green-600" />
                               )}
                             </Button>
+                            {user.id !== currentUser?.id && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setDeleteDialog({
+                                    open: true,
+                                    userId: user.id,
+                                    username: user.username,
+                                    hasData: false,
+                                  });
+                                }}
+                                title="Delete user"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -501,6 +573,23 @@ export default function UserManagementPage() {
                             </>
                           )}
                         </Button>
+                        {user.id !== currentUser?.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDeleteDialog({
+                                open: true,
+                                userId: user.id,
+                                username: user.username,
+                                hasData: false,
+                              });
+                            }}
+                            className="px-3"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -509,6 +598,58 @@ export default function UserManagementPage() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !isDeleting && setDeleteDialog({ ...deleteDialog, open })}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                Delete User Account
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  Are you sure you want to delete the user <strong>{deleteDialog.username}</strong>?
+                </p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                    ⚠️ This action is irreversible
+                  </p>
+                  <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5">
+                    <li className="list-disc">If the user has created delivery orders or reported issues, they will be deactivated instead</li>
+                    <li className="list-disc">If the user has no associated data, they will be permanently deleted</li>
+                    <li className="list-disc">The username will become available for future use</li>
+                  </ul>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Alternative:</strong> Consider deactivating the user instead if you might need to restore access later.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={deleteUser}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete User
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
