@@ -303,7 +303,7 @@ export default function ProcessDOsPage() {
     setDeliveryOrders(prevOrders => 
       prevOrders.map(order => 
         order.id === orderId 
-          ? { ...order, status: 'PENDING_APPROVAL' }
+          ? { ...order, status: 'at_project_office' }
           : order
       )
     );
@@ -319,7 +319,7 @@ export default function ProcessDOsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          toStatus: "PENDING_APPROVAL",
+          toStatus: "at_project_office",
           notes: forwardNote.trim() || "Forwarded to Project Office and CISF for dual approval"
         }),
       });
