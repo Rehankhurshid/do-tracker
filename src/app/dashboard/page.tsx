@@ -12,39 +12,44 @@ export default function DashboardPage() {
     fetch("/api/auth/me", {
       credentials: 'include' // Ensure cookies are sent
     })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
-          throw new Error('Not authenticated');
+          // Don't throw error, just redirect to login
+          router.push("/login");
+          return null;
         }
-        return res.json();
-      })
-      .then((data) => {
-        if (data.user) {
-          switch (data.user.role) {
-            case "ADMIN":
-              router.push("/admin");
-              break;
-            case "AREA_OFFICE":
-              router.push("/area-office");
-              break;
-            case "PROJECT_OFFICE":
-              router.push("/project-office");
-              break;
-            case "CISF":
-              router.push("/cisf");
-              break;
-            case "ROAD_SALE":
-              router.push("/road-sale");
-              break;
-            default:
-              router.push("/login");
+        
+        try {
+          const data = await res.json();
+          if (data && data.user) {
+            switch (data.user.role) {
+              case "ADMIN":
+                router.push("/admin");
+                break;
+              case "AREA_OFFICE":
+                router.push("/area-office");
+                break;
+              case "PROJECT_OFFICE":
+                router.push("/project-office");
+                break;
+              case "CISF":
+                router.push("/cisf");
+                break;
+              case "ROAD_SALE":
+                router.push("/road-sale");
+                break;
+              default:
+                router.push("/login");
+            }
+          } else {
+            router.push("/login");
           }
-        } else {
+        } catch (e) {
           router.push("/login");
         }
       })
       .catch((error) => {
-        console.error('Auth check failed:', error);
+        // Silently redirect to login on any error
         router.push("/login");
       });
   }, [router]);

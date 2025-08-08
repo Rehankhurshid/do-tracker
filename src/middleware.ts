@@ -5,7 +5,19 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Public paths that don't require authentication
-  const publicPaths = ['/', '/login', '/reset-password', '/consumer', '/api/auth/login', '/api/auth/reset-password', '/api/auth/check-user', '/api/auth/validate-token', '/api/auth/request-reset', '/api/public'];
+  const publicPaths = [
+    '/', 
+    '/login', 
+    '/reset-password', 
+    '/consumer',
+    '/api/auth/login',
+    '/api/auth/logout', // Add logout to public paths
+    '/api/auth/reset-password',
+    '/api/auth/check-user',
+    '/api/auth/validate-token',
+    '/api/auth/request-reset',
+    '/api/public'
+  ];
   
   const isPublicPath = publicPaths.some(publicPath => path.startsWith(publicPath));
 
@@ -13,7 +25,10 @@ export function middleware(request: NextRequest) {
 
   // Redirect to login if accessing protected route without token
   if (!isPublicPath && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    // Avoid redirect loop - if already going to login, don't redirect again
+    if (path !== '/login') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   // Redirect to dashboard if accessing login with token

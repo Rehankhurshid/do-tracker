@@ -27,7 +27,9 @@ export default function DashboardLayout({
       });
       
       if (!response.ok) {
-        throw new Error('Not authenticated');
+        // Don't throw error, just redirect to login
+        router.push("/login");
+        return;
       }
       
       const data = await response.json();
