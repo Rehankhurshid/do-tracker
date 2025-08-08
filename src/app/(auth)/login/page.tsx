@@ -62,6 +62,8 @@ export default function LoginPage() {
         return <Building className="h-5 w-5" />;
       case "PROJECT_OFFICE":
         return <Briefcase className="h-5 w-5" />;
+      case "CISF":
+        return <Shield className="h-5 w-5" />;
       case "ROAD_SALE":
         return <Truck className="h-5 w-5" />;
       default:
@@ -96,6 +98,9 @@ export default function LoginPage() {
             break;
           case "PROJECT_OFFICE":
             router.push("/project-office");
+            break;
+          case "CISF":
+            router.push("/cisf");
             break;
           case "ROAD_SALE":
             router.push("/road-sale");
