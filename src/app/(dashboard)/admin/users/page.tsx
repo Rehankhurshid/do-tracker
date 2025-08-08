@@ -289,6 +289,7 @@ export default function UserManagementPage() {
                         <option value="ADMIN">Admin</option>
                         <option value="AREA_OFFICE">Area Office</option>
                         <option value="PROJECT_OFFICE">Project Office</option>
+                        <option value="CISF">CISF (Security)</option>
                         <option value="ROAD_SALE">Road Sale</option>
                       </select>
                     </div>
