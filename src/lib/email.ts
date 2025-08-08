@@ -1,7 +1,8 @@
-import { Resend } from 'resend';
+const brevo = require('@getbrevo/brevo');
 
-// Initialize Resend with your API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Brevo API client
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
 
 export interface SendEmailOptions {
   to: string;
@@ -12,52 +13,66 @@ export interface SendEmailOptions {
 
 export async function sendEmail({ to, subject, html, from }: SendEmailOptions) {
   try {
-    // Use your verified domain or the default Resend domain
-    const fromEmail = from || process.env.EMAIL_FROM || 'DO Tracker <onboarding@resend.dev>';
+    // Use your verified sender or the default
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || 'noreply@yourdomain.com';
+    const senderName = process.env.BREVO_SENDER_NAME || 'DO Tracker';
     
-    console.log('Attempting to send email:', {
-      from: fromEmail,
+    console.log('Attempting to send email via Brevo:', {
+      from: `${senderName} <${senderEmail}>`,
       to,
       subject,
-      hasApiKey: !!process.env.RESEND_API_KEY,
-      apiKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 10) + '...',
+      hasApiKey: !!process.env.BREVO_API_KEY,
+      apiKeyPrefix: process.env.BREVO_API_KEY?.substring(0, 10) + '...',
     });
-    
-    type ResendSendResult = { data?: { id?: string | null } | null; error?: unknown | null };
-    const result = await resend.emails.send({
-      from: fromEmail,
-      to,
-      subject,
-      html,
-    }) as unknown as ResendSendResult;
 
-    // The SDK returns { data, error }
-    const sentId = result?.data?.id || undefined;
-    if (sentId) {
-      console.log('Email sent successfully:', {
-        id: sentId,
-        to,
-        from: fromEmail,
-      });
-      return { success: true, data: result };
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = html;
+    sendSmtpEmail.sender = { 
+      name: senderName, 
+      email: senderEmail 
+    };
+    sendSmtpEmail.to = [{ 
+      email: to 
+    }];
+    
+    // Optional: Add reply-to
+    if (process.env.BREVO_REPLY_TO_EMAIL) {
+      sendSmtpEmail.replyTo = { 
+        email: process.env.BREVO_REPLY_TO_EMAIL,
+        name: process.env.BREVO_REPLY_TO_NAME || 'DO Tracker Support'
+      };
     }
 
-    console.error('Failed to send email - SDK error:', {
-      error: result?.error,
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    
+    console.log('Email sent successfully via Brevo:', {
+      messageId: result.messageId,
       to,
-      from: fromEmail,
+      from: `${senderName} <${senderEmail}>`,
     });
-    return { success: false, error: result?.error };
-  } catch (error: unknown) {
-    const err = error as { message?: string; name?: string; statusCode?: number };
-    console.error('Failed to send email - Exception:', {
-      error: err?.message || error,
-      statusCode: err?.statusCode,
-      name: err?.name,
+    
+    return { 
+      success: true, 
+      data: { 
+        id: result.messageId,
+        ...result 
+      } 
+    };
+    
+  } catch (error: any) {
+    console.error('Failed to send email via Brevo:', {
+      error: error?.response?.body || error?.message || error,
+      statusCode: error?.response?.statusCode,
       to,
-      from: from || process.env.EMAIL_FROM || 'DO Tracker <onboarding@resend.dev>',
+      from: from || `${process.env.BREVO_SENDER_NAME} <${process.env.BREVO_SENDER_EMAIL}>`,
     });
-    return { success: false, error };
+    
+    return { 
+      success: false, 
+      error: error?.response?.body || error?.message || error 
+    };
   }
 }
 
@@ -234,6 +249,205 @@ export function generateDOCreatedEmail(params: {
 
           <div class="footer">
             <p>You're receiving this because you're subscribed to Area Office notifications.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+export function generateWelcomeEmail(params: {
+  username: string;
+  email: string;
+  role: string;
+  tempPassword?: string;
+  resetLink?: string;
+}) {
+  const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to DO Tracker</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+            text-decoration: none;
+          }
+          h1 {
+            color: #1f2937;
+            font-size: 24px;
+            margin: 20px 0;
+          }
+          .content {
+            margin: 20px 0;
+            color: #4b5563;
+          }
+          .credentials {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+          }
+          .credential-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+          }
+          .credential-label {
+            font-weight: 600;
+            color: #374151;
+          }
+          .credential-value {
+            color: #1f2937;
+            font-family: monospace;
+            background-color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 20px 0;
+          }
+          .button:hover {
+            background-color: #1d4ed8;
+          }
+          .warning {
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 20px 0;
+            color: #92400e;
+          }
+          .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <a href="${appUrl}" class="logo">
+              📦 DO Tracker
+            </a>
+          </div>
+          
+          <h1>Welcome to DO Tracker!</h1>
+          
+          <div class="content">
+            <p>Hi ${params.username},</p>
+            
+            <p>Your account has been successfully created in the DO Tracker system. You can now log in and start managing delivery orders.</p>
+            
+            <div class="credentials">
+              <h3 style="margin-top: 0;">Your Account Details:</h3>
+              <div class="credential-row">
+                <span class="credential-label">Username:</span>
+                <span class="credential-value">${params.username}</span>
+              </div>
+              <div class="credential-row">
+                <span class="credential-label">Email:</span>
+                <span class="credential-value">${params.email}</span>
+              </div>
+              <div class="credential-row">
+                <span class="credential-label">Role:</span>
+                <span class="credential-value">${params.role.replace('_', ' ')}</span>
+              </div>
+              ${params.tempPassword ? `
+              <div class="credential-row">
+                <span class="credential-label">Temporary Password:</span>
+                <span class="credential-value">${params.tempPassword}</span>
+              </div>
+              ` : ''}
+            </div>
+            
+            ${params.resetLink ? `
+            <div class="warning">
+              <strong>⚠️ Action Required:</strong> Please set your password by clicking the button below. This link will expire in 24 hours.
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${params.resetLink}" class="button">Set Your Password</a>
+            </div>
+            ` : `
+            <div style="text-align: center;">
+              <a href="${appUrl}/login" class="button">Login to DO Tracker</a>
+            </div>
+            `}
+            
+            <h3>What you can do with your ${params.role.replace('_', ' ')} role:</h3>
+            <ul>
+              ${params.role === 'ADMIN' ? `
+                <li>Manage all users and their permissions</li>
+                <li>View and manage all delivery orders</li>
+                <li>Access system reports and analytics</li>
+                <li>Configure system settings</li>
+              ` : params.role === 'AREA_OFFICE' ? `
+                <li>Create new delivery orders</li>
+                <li>Forward orders to Project Office and CISF</li>
+                <li>Track and resolve issues</li>
+                <li>View order status and history</li>
+              ` : params.role === 'PROJECT_OFFICE' ? `
+                <li>Review and approve delivery orders</li>
+                <li>Forward approved orders to Road Sale</li>
+                <li>Report and manage issues</li>
+                <li>Track order processing status</li>
+              ` : params.role === 'CISF' ? `
+                <li>Review delivery orders for security clearance</li>
+                <li>Approve or reject orders based on security requirements</li>
+                <li>Report security-related issues</li>
+                <li>Track security approval status</li>
+              ` : params.role === 'ROAD_SALE' ? `
+                <li>Receive approved delivery orders</li>
+                <li>Mark orders as received</li>
+                <li>Report delivery issues</li>
+                <li>View order details and history</li>
+              ` : ''}
+            </ul>
+          </div>
+          
+          <div class="footer">
+            <p>If you have any questions or need assistance, please contact your system administrator.</p>
+            <p>© ${new Date().getFullYear()} DO Tracker. All rights reserved.</p>
           </div>
         </div>
       </body>
