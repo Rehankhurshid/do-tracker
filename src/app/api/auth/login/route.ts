@@ -76,14 +76,22 @@ export async function POST(request: NextRequest) {
     });
 
     // Set HTTP-only cookie with proper production settings
+    const isProduction = process.env.NODE_ENV === 'production';
     response.cookies.set({
       name: 'token',
       value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Use 'lax' for better compatibility with redirects
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax', // 'none' for production to work with HTTPS
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
+    });
+    
+    console.log('Cookie set with settings:', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/'
     });
 
     return response;

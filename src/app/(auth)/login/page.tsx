@@ -78,9 +78,11 @@ export default function LoginPage() {
 
   const performLogin = async (username: string, password: string) => {
     setIsLoading(true);
+    console.log('Starting login for user:', username);
 
     try {
       const data = await api.post("/api/auth/login", { username, password });
+      console.log('Login response received:', data);
 
       if (data.success) {
         toast({
@@ -88,28 +90,32 @@ export default function LoginPage() {
           description: "Login successful! Redirecting...",
         });
         
+        // Add a small delay to ensure cookie is set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Redirect based on user role
-        switch (data.user.role) {
-          case "ADMIN":
-            router.push("/admin");
-            break;
-          case "AREA_OFFICE":
-            router.push("/area-office");
-            break;
-          case "PROJECT_OFFICE":
-            router.push("/project-office");
-            break;
-          case "CISF":
-            router.push("/cisf");
-            break;
-          case "ROAD_SALE":
-            router.push("/road-sale");
-            break;
-          default:
-            router.push("/dashboard");
-        }
+        const redirectPath = (() => {
+          switch (data.user.role) {
+            case "ADMIN":
+              return "/admin";
+            case "AREA_OFFICE":
+              return "/area-office";
+            case "PROJECT_OFFICE":
+              return "/project-office";
+            case "CISF":
+              return "/cisf";
+            case "ROAD_SALE":
+              return "/road-sale";
+            default:
+              return "/dashboard";
+          }
+        })();
+        
+        console.log('Redirecting to:', redirectPath);
+        router.push(redirectPath);
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Error",
         description: error.message || "Something went wrong. Please try again.",
