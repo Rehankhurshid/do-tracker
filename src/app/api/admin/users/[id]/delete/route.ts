@@ -10,7 +10,7 @@ export async function DELETE(
     // Get the userId from params - await it for Next.js 13+
     const { id: userId } = await Promise.resolve(params);
     
-    const token = request.cookies.get("auth-token")?.value;
+    const token = request.cookies.get("token")?.value;
     if (!token) {
       console.error("Delete user - No auth token found");
       return NextResponse.json({ error: "Unauthorized - No token" }, { status: 401 });
