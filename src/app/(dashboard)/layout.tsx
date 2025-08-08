@@ -21,7 +21,15 @@ export default function DashboardLayout({
 
   const fetchUser = async () => {
     try {
-      const response = await fetch("/api/auth/me");
+      const response = await fetch("/api/auth/me", {
+        credentials: 'include',
+        cache: 'no-store' // Prevent caching of auth response
+      });
+      
+      if (!response.ok) {
+        throw new Error('Not authenticated');
+      }
+      
       const data = await response.json();
 
       if (!data.user) {
@@ -36,13 +44,14 @@ export default function DashboardLayout({
         ADMIN: "/admin",
         AREA_OFFICE: "/area-office",
         PROJECT_OFFICE: "/project-office",
+        CISF: "/cisf",
         ROAD_SALE: "/road-sale",
       };
 
       const expectedBasePath = rolePaths[data.user.role as keyof typeof rolePaths];
       
       // Check if user is accessing the correct role-based path
-      if (expectedBasePath && !pathname.startsWith(expectedBasePath)) {
+      if (expectedBasePath && !pathname.startsWith(expectedBasePath) && !pathname.startsWith("/settings")) {
         router.push(expectedBasePath);
         return;
       }

@@ -40,11 +40,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Add cache headers for better performance
+    // No caching for auth endpoints - always check fresh
     const response = NextResponse.json({ user });
     
-    // Cache for 60 seconds on the client, revalidate in background
-    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate');
+    // Prevent caching of authentication responses
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     
     return response;
   } catch (error) {
