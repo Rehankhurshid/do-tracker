@@ -7,17 +7,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get the userId from params - await it for Next.js 13+
+    const { id: userId } = await Promise.resolve(params);
+    
     const token = request.cookies.get("auth-token")?.value;
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.error("Delete user - No auth token found");
+      return NextResponse.json({ error: "Unauthorized - No token" }, { status: 401 });
     }
 
     const currentUser = await verifyToken(token);
-    if (!currentUser || currentUser.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!currentUser) {
+      console.error("Delete user - Invalid token or user not found");
+      return NextResponse.json({ error: "Unauthorized - Invalid token" }, { status: 401 });
     }
-
-    const { id: userId } = params;
+    
+    if (currentUser.role !== "ADMIN") {
+      console.error("Delete user - Non-admin attempted deletion:", currentUser.username);
+      return NextResponse.json({ error: "Unauthorized - Admin access required" }, { status: 403 });
+    }
 
     // Prevent self-deletion
     if (currentUser.id === userId) {

@@ -154,6 +154,10 @@ export default function UserManagementPage() {
     try {
       const response = await fetch(`/api/admin/users/${deleteDialog.userId}/delete`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Ensure cookies are sent
       });
 
       const data = await response.json();
@@ -168,16 +172,36 @@ export default function UserManagementPage() {
         fetchUserAndData();
         setDeleteDialog({ open: false, userId: "", username: "", hasData: false });
       } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to delete user",
-          variant: "destructive",
-        });
+        console.error("Delete user error:", data);
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          // Optionally redirect to login
+          // router.push("/login");
+        } else if (response.status === 403) {
+          toast({
+            title: "Permission Denied",
+            description: "Only administrators can delete users.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: data.error || "Failed to delete user",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
+      console.error("Delete user exception:", error);
       toast({
         title: "Error",
-        description: "Failed to delete user",
+        description: "Network error. Please try again.",
         variant: "destructive",
       });
     } finally {
