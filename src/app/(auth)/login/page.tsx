@@ -4,14 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, LogIn, Shield, Building, Briefcase, Truck, User, Sparkles, CheckCircle2, Zap } from "lucide-react";
+import { Loader2, LogIn, Shield, Building, Briefcase, Truck, User, Sparkles, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { api } from "@/lib/api-client";
 
 export default function LoginPage() {
@@ -126,48 +125,6 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = (username: string) => {
-    setFormData({ username, password: "admin123" });
-    performLogin(username, "admin123");
-  };
-
-  const testUsers = [
-    {
-      username: "admin",
-      role: "Administrator",
-      icon: Shield,
-      color: "bg-purple-500 hover:bg-purple-600",
-      description: "Full system access"
-    },
-    {
-      username: "area_office",
-      role: "Area Office",
-      icon: Building,
-      color: "bg-blue-500 hover:bg-blue-600",
-      description: "Create & manage DOs"
-    },
-    {
-      username: "project_office",
-      role: "Project Office",
-      icon: Briefcase,
-      color: "bg-green-500 hover:bg-green-600",
-      description: "Process & forward orders"
-    },
-    {
-      username: "cisf",
-      role: "CISF Security",
-      icon: Shield,
-      color: "bg-indigo-500 hover:bg-indigo-600",
-      description: "Security approval"
-    },
-    {
-      username: "road_sale",
-      role: "Road Sale",
-      icon: Truck,
-      color: "bg-orange-500 hover:bg-orange-600",
-      description: "Final delivery point"
-    }
-  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 px-4 py-8">
@@ -345,54 +302,6 @@ export default function LoginPage() {
         </Card>
       </motion.div>
 
-      {/* Quick Login Section for Testing - Always visible for demo */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="w-full"
-      >
-        <Card className="border-dashed border-2 bg-muted/10">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <CardTitle className="text-sm">Quick Login (Test Mode)</CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              Click any user below for instant login with test credentials
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {testUsers.map((user) => {
-                const Icon = user.icon;
-                return (
-                  <motion.button
-                    key={user.username}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => quickLogin(user.username)}
-                    disabled={isLoading}
-                    className={`${user.color} text-white rounded-lg p-3 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <Icon className="h-5 w-5" />
-                      <span className="text-xs font-semibold">{user.role}</span>
-                      <span className="text-[10px] opacity-80">{user.username}</span>
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
-            <Separator className="my-3" />
-            <div className="text-center">
-              <p className="text-[10px] text-muted-foreground">
-                All test accounts use password: <code className="bg-muted px-1 rounded">admin123</code>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
       </div>
     </div>
   );
