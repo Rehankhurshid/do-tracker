@@ -98,6 +98,7 @@ export function Navigation({ user }: NavigationProps) {
           { label: "Create", href: "/area-office/create", icon: Plus, mobileOnly: false },
           { label: "Process", href: "/area-office/process", icon: Package, mobileOnly: false },
           { label: "Issues", href: "/area-office/issues", icon: AlertCircle, mobileOnly: false },
+          { label: "Reports", href: "/area-office/reports", icon: FileText, mobileOnly: false },
           ...commonEndItems,
         ];
       case "PROJECT_OFFICE":
@@ -105,6 +106,7 @@ export function Navigation({ user }: NavigationProps) {
           ...baseItems,
           { label: "Process", href: "/project-office/process", icon: Package, mobileOnly: false },
           { label: "Issues", href: "/project-office/issues", icon: AlertCircle, mobileOnly: false },
+          { label: "Reports", href: "/project-office/reports", icon: FileText, mobileOnly: false },
           ...commonEndItems,
         ];
       case "CISF":
