@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, LogIn, Shield, Building, Briefcase, Truck, User, Sparkles, CheckCircle2 } from "lucide-react";
+import { Loader2, LogIn, Shield, Building, Briefcase, Truck, User, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const [userInfo, setUserInfo] = useState<any>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -77,6 +78,7 @@ export default function LoginPage() {
 
   const performLogin = async (username: string, password: string) => {
     setIsLoading(true);
+    setLoginError(null); // Clear any previous errors
     console.log('Starting login for user:', username);
 
     try {
@@ -115,9 +117,27 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error('Login error:', error);
+      
+      // Set error message for display
+      let errorMessage = "Invalid username or password";
+      
+      // Check for specific error messages
+      if (error.message?.includes("Invalid credentials")) {
+        errorMessage = "Invalid username or password. Please try again.";
+      } else if (error.message?.includes("Password not set")) {
+        errorMessage = "Password not set. Please use the password reset link sent to your email.";
+      } else if (error.message?.includes("inactive")) {
+        errorMessage = "Your account is inactive. Please contact an administrator.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setLoginError(errorMessage);
+      
+      // Also show toast for consistency
       toast({
-        title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
+        title: "Login Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -157,9 +177,11 @@ export default function LoginPage() {
                     type="text"
                     placeholder="Enter your username"
                     value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, username: e.target.value });
+                      // Clear error when user starts typing
+                      if (loginError) setLoginError(null);
+                    }}
                     required
                     disabled={isLoading}
                     className="pr-10"
@@ -252,13 +274,38 @@ export default function LoginPage() {
                   type="password"
                   placeholder="Enter your password"
                   value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    // Clear error when user starts typing
+                    if (loginError) setLoginError(null);
+                  }}
                   required
                   disabled={isLoading}
+                  className={loginError ? "border-red-500" : ""}
                 />
               </div>
+              
+              {/* Error Message Display */}
+              <AnimatePresence mode="wait">
+                {loginError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, y: -10, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {loginError}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               <div className="flex items-center justify-between">
                 <Link
