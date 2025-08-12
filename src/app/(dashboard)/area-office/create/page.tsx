@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarIcon, Loader2, Plus, X, CheckCircle2, Package, ArrowRight, Sparkles, RefreshCw } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, X, CheckCircle2, Package, ArrowRight, Sparkles, RefreshCw, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { PartySelector } from "@/components/ui/party-selector";
 
 const formSchema = z.object({
   doNumber: z.string().min(1, "DO Number is required"),
@@ -436,30 +437,17 @@ export default function CreateDOPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Party</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a party" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {parties.length === 0 ? (
-                              <SelectItem value="loading" disabled>
-                                Loading parties...
-                              </SelectItem>
-                            ) : (
-                              parties.map((party) => (
-                                <SelectItem key={party.id} value={party.id}>
-                                  {party.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <PartySelector
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            parties={parties}
+                            onPartiesUpdate={fetchParties}
+                          />
+                        </FormControl>
                         <FormDescription>
-                          Select the receiving party
+                          Select an existing party or type to create a new one
                         </FormDescription>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
