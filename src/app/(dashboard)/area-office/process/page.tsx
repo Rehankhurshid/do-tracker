@@ -1407,24 +1407,26 @@ export default function ProcessDOsPage() {
               <AlertTriangle className="h-5 w-5 text-red-500" />
               Delete Delivery Order
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                Are you sure you want to delete delivery order <strong>#{deleteDialog.orderNumber}</strong>?
-              </p>
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                  ⚠️ This action cannot be undone
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Are you sure you want to delete delivery order <strong>#{deleteDialog.orderNumber}</strong>?
                 </p>
-                <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5 mt-2">
-                  <li className="list-disc">The delivery order will be permanently deleted</li>
-                  <li className="list-disc">All associated issues will also be deleted</li>
-                  <li className="list-disc">This action cannot be reversed</li>
-                </ul>
-              </div>
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Note:</strong> You can only delete delivery orders that haven't been forwarded yet.
-                </p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                    ⚠️ This action cannot be undone
+                  </p>
+                  <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5 mt-2">
+                    <li className="list-disc">The delivery order will be permanently deleted</li>
+                    <li className="list-disc">All associated issues will also be deleted</li>
+                    <li className="list-disc">This action cannot be reversed</li>
+                  </ul>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Note:</strong> You can only delete delivery orders that haven't been forwarded yet.
+                  </p>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

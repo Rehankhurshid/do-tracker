@@ -631,24 +631,26 @@ export default function UserManagementPage() {
                 <AlertTriangle className="h-5 w-5 text-red-500" />
                 Delete User Account
               </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-3">
-                <p>
-                  Are you sure you want to delete the user <strong>{deleteDialog.username}</strong>?
-                </p>
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                    ⚠️ This action is irreversible
+              <AlertDialogDescription asChild>
+                <div className="space-y-3">
+                  <p>
+                    Are you sure you want to delete the user <strong>{deleteDialog.username}</strong>?
                   </p>
-                  <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5">
-                    <li className="list-disc">If the user has created delivery orders or reported issues, they will be deactivated instead</li>
-                    <li className="list-disc">If the user has no associated data, they will be permanently deleted</li>
-                    <li className="list-disc">The username will become available for future use</li>
-                  </ul>
-                </div>
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Alternative:</strong> Consider deactivating the user instead if you might need to restore access later.
-                  </p>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                      ⚠️ This action is irreversible
+                    </p>
+                    <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5">
+                      <li className="list-disc">If the user has created delivery orders or reported issues, they will be deactivated instead</li>
+                      <li className="list-disc">If the user has no associated data, they will be permanently deleted</li>
+                      <li className="list-disc">The username will become available for future use</li>
+                    </ul>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <strong>Alternative:</strong> Consider deactivating the user instead if you might need to restore access later.
+                    </p>
+                  </div>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
