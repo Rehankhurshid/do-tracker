@@ -119,7 +119,7 @@ export default function AreaOfficeReportsPage() {
     setDateRange({ from: range.from, to: range.to });
   };
 
-  const exportReport = async (format: 'pdf' | 'excel') => {
+  const exportReport = async (exportFormat: 'pdf' | 'excel') => {
     setIsExporting(true);
     try {
       const params = new URLSearchParams({
@@ -127,7 +127,7 @@ export default function AreaOfficeReportsPage() {
         endDate: format(dateRange.to, "yyyy-MM-dd"),
         status: selectedStatus,
         partyId: selectedParty,
-        format,
+        format: exportFormat,
       });
 
       const response = await fetch(`/api/reports/delivery-orders/export?${params}`);
@@ -136,12 +136,12 @@ export default function AreaOfficeReportsPage() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `DO-Report-${format(new Date(), 'yyyy-MM-dd')}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+        a.download = `DO-Report-${format(new Date(), 'yyyy-MM-dd')}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
         a.click();
         
         toast({
           title: "✅ Report Exported",
-          description: `Your report has been downloaded as ${format.toUpperCase()}`,
+          description: `Your report has been downloaded as ${exportFormat.toUpperCase()}`,
         });
       }
     } catch (error) {
@@ -213,14 +213,14 @@ export default function AreaOfficeReportsPage() {
             <Button
               variant="outline"
               onClick={() => exportReport('excel')}
-              disabled={isExporting || !reportData}
+              disabled={isExporting || isLoading}
             >
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Excel
             </Button>
             <Button
               onClick={() => exportReport('pdf')}
-              disabled={isExporting || !reportData}
+              disabled={isExporting || isLoading}
             >
               <FileDown className="h-4 w-4 mr-2" />
               PDF Report
