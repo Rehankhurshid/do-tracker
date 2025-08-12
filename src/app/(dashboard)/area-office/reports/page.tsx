@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Download, Filter, Calendar, TrendingUp, 
   Package, AlertCircle, CheckCircle, Clock, Building,
-  FileSpreadsheet, FilePdf, Loader2, ChevronDown, 
+  FileSpreadsheet, FileDown, Loader2, ChevronDown, 
   BarChart3, PieChart, Activity, Users, ArrowUp,
   ArrowDown, Sparkles, RefreshCw, Eye
 } from "lucide-react";
@@ -222,7 +222,7 @@ export default function AreaOfficeReportsPage() {
               onClick={() => exportReport('pdf')}
               disabled={isExporting || !reportData}
             >
-              <FilePdf className="h-4 w-4 mr-2" />
+              <FileDown className="h-4 w-4 mr-2" />
               PDF Report
             </Button>
           </div>
