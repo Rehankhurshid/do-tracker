@@ -4,9 +4,10 @@ import { verifyToken } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = request.cookies.get("token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +30,7 @@ export async function POST(
 
     // Get the delivery order
     const deliveryOrder = await prisma.deliveryOrder.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         issues: {
           where: { status: "OPEN" },
@@ -62,7 +63,7 @@ export async function POST(
 
     // Update the delivery order status to at_road_sale
     const updatedOrder = await prisma.deliveryOrder.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: "at_road_sale",
         updatedAt: new Date(),
@@ -72,7 +73,7 @@ export async function POST(
     // Create workflow history entry
     await prisma.workflowHistory.create({
       data: {
-        deliveryOrderId: params.id,
+        deliveryOrderId: id,
         fromStatus: deliveryOrder.status,
         toStatus: "at_road_sale",
         actionById: user.id,

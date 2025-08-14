@@ -4,9 +4,10 @@ import { verifyToken } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = request.cookies.get("token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +38,7 @@ export async function POST(
 
     // Get the delivery order
     const deliveryOrder = await prisma.deliveryOrder.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         issues: {
           where: { status: "OPEN" },
@@ -85,14 +86,14 @@ export async function POST(
 
     // Update the delivery order
     const updatedOrder = await prisma.deliveryOrder.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     });
 
     // Create workflow history entry
     await prisma.workflowHistory.create({
       data: {
-        deliveryOrderId: params.id,
+        deliveryOrderId: id,
         fromStatus: deliveryOrder.status,
         toStatus: updatedOrder.status,
         actionById: user.id,
@@ -104,10 +105,15 @@ export async function POST(
       message: "Delivery order approved successfully",
       deliveryOrder: updatedOrder,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error approving delivery order:", error);
+    console.error("Error details:", error?.message || error);
+    console.error("Stack trace:", error?.stack);
     return NextResponse.json(
-      { error: "Failed to approve delivery order" },
+      { 
+        error: "Failed to approve delivery order",
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      },
       { status: 500 }
     );
   }
