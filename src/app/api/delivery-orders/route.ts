@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply additional filters
-    if (status) {
+    // Note: We skip status filter for roles with OR conditions to avoid breaking the logic
+    if (status && !whereConditions.OR) {
       whereConditions.status = status;
     }
     if (partyId) {
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
             }
           },
           orderBy: {
-            timestamp: 'desc'
+            createdAt: 'desc'
           }
         },
       },

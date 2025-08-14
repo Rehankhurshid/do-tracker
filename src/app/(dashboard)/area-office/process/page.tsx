@@ -470,7 +470,7 @@ export default function ProcessDOsPage() {
   useEffect(() => {
     fetch('/api/auth/me')
       .then(res => res.json())
-      .then(data => setCurrentUser(data))
+      .then(data => setCurrentUser(data.user || data))
       .catch(() => {});
   }, []);
 
