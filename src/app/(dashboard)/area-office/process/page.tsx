@@ -389,9 +389,6 @@ export default function ProcessDOsPage() {
         setConfirmDialog({ open: false, orderId: null, orderNumber: "", partyName: "" });
         setForwardNote("");
         
-        // Switch to forwarded tab to show the result
-        setActiveTab("forwarded");
-        
         toast({
           title: "✅ Success",
           description: `DO #${orderToForward.doNumber} forwarded to Project Office & CISF for approval`,
@@ -453,9 +450,9 @@ export default function ProcessDOsPage() {
     order.issues?.some((issue: any) => issue.status === "OPEN")
   );
 
-  const forwardedOrders = deliveryOrders.filter(order => 
-    order.status !== "at_area_office" && order.status !== "created"
-  );
+  // With department-wide visibility, Area Office can only see DOs at their stage
+  // Once forwarded to Project Office, DOs are no longer visible here
+  const forwardedOrders: any[] = [];
 
   const renderOrdersTable = (orders: any[]) => {
     if (orders.length === 0) {
@@ -924,7 +921,7 @@ export default function ProcessDOsPage() {
                 </TabsTrigger>
                 <TabsTrigger value="forwarded" className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
-                  Forwarded ({forwardedOrders.length})
+                  Forwarded
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="pending" className="mt-4">
@@ -934,7 +931,19 @@ export default function ProcessDOsPage() {
                 {renderOrdersTable(ordersWithIssues)}
               </TabsContent>
               <TabsContent value="forwarded" className="mt-4">
-                {renderOrdersTable(forwardedOrders)}
+                <div className="text-center py-8 space-y-4">
+                  <div className="flex justify-center">
+                    <Send className="h-12 w-12 text-muted-foreground/50" />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">
+                      Forwarded delivery orders have moved to Project Office
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Once a DO is forwarded, it becomes visible to Project Office and CISF departments for processing
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           )}
