@@ -73,13 +73,21 @@ export async function DELETE(
     }
 
     // Check if party has associated delivery orders
-    const doCount = await prisma.deliveryOrder.count({
-      where: { partyId: id }
+    const deliveryOrders = await prisma.deliveryOrder.findMany({
+      where: { partyId: id },
+      select: { doNumber: true }
     });
 
-    if (doCount > 0) {
+    if (deliveryOrders.length > 0) {
+      const doNumbers = deliveryOrders.slice(0, 3).map(d => d.doNumber).join(', ');
+      const moreText = deliveryOrders.length > 3 ? ` and ${deliveryOrders.length - 3} more` : '';
+      
       return NextResponse.json(
-        { error: `Cannot delete party. ${doCount} delivery order(s) are associated with this party.` },
+        { 
+          error: `Cannot delete this party. ${deliveryOrders.length} delivery order(s) are using this party.`,
+          details: `Associated DOs: ${doNumbers}${moreText}. Please delete or reassign these delivery orders first.`,
+          doCount: deliveryOrders.length
+        },
         { status: 400 }
       );
     }
@@ -89,7 +97,9 @@ export async function DELETE(
       where: { id }
     });
 
-    return NextResponse.json({ message: 'Party deleted successfully' });
+    return NextResponse.json({ 
+      message: 'Party deleted successfully'
+    });
   } catch (error) {
     console.error('Error deleting party:', error);
     return NextResponse.json(

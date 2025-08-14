@@ -11,6 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -23,6 +33,11 @@ export default function PartyManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingParty, setEditingParty] = useState<any>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    party: any | null;
+    loading: boolean;
+  }>({ open: false, party: null, loading: false });
   const [formData, setFormData] = useState({
     name: "",
     contactPerson: "",
@@ -103,11 +118,13 @@ export default function PartyManagementPage() {
     }
   };
 
-  const deleteParty = async (partyId: string) => {
-    if (!confirm("Are you sure you want to delete this party?")) return;
+  const deleteParty = async () => {
+    if (!deleteDialog.party) return;
+    
+    setDeleteDialog(prev => ({ ...prev, loading: true }));
 
     try {
-      const response = await fetch(`/api/admin/parties/${partyId}`, {
+      const response = await fetch(`/api/admin/parties/${deleteDialog.party.id}`, {
         method: "DELETE",
       });
 
@@ -116,14 +133,25 @@ export default function PartyManagementPage() {
           title: "Success",
           description: "Party deleted successfully",
         });
+        setDeleteDialog({ open: false, party: null, loading: false });
         fetchUserAndData();
       } else {
         const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to delete party",
-          variant: "destructive",
-        });
+        // Check if it's because of associated DOs
+        if (error.doCount) {
+          toast({
+            title: "Cannot Delete Party",
+            description: error.details ? `${error.error} ${error.details}` : error.error,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.error || "Failed to delete party",
+            variant: "destructive",
+          });
+        }
+        setDeleteDialog(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
       toast({
@@ -131,6 +159,7 @@ export default function PartyManagementPage() {
         description: "Failed to delete party",
         variant: "destructive",
       });
+      setDeleteDialog(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -327,7 +356,7 @@ export default function PartyManagementPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => deleteParty(party.id)}
+                              onClick={() => setDeleteDialog({ open: true, party, loading: false })}
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </Button>
@@ -423,7 +452,7 @@ export default function PartyManagementPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => deleteParty(party.id)}
+                        onClick={() => setDeleteDialog({ open: true, party, loading: false })}
                         className="flex-1"
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />
@@ -436,6 +465,41 @@ export default function PartyManagementPage() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialog.open} onOpenChange={(open) => {
+          if (!deleteDialog.loading) {
+            setDeleteDialog(prev => ({ ...prev, open }));
+          }
+        }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Party</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteDialog.party?.name}"?
+                {deleteDialog.party?.deliveryOrders?.length > 0 && (
+                  <span className="block mt-2 text-red-600">
+                    Warning: This party has {deleteDialog.party.deliveryOrders.length} associated delivery order(s).
+                  </span>
+                )}
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteDialog.loading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  deleteParty();
+                }}
+                disabled={deleteDialog.loading}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleteDialog.loading ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
