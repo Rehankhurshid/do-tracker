@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Fetch Road Sale specific statistics
     const deliveryOrders = await prisma.deliveryOrder.findMany({
       where: {
-        status: 'AT_ROAD_SALE'
+        status: 'at_road_sale'
       },
       include: {
         issues: {

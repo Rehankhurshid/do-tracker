@@ -22,9 +22,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch Area Office specific statistics
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      where: { createdById: decoded.userId },
+    // Fetch Area Office specific statistics - Department-wide visibility
+    // Get all DOs currently at Area Office stage
+    const deliveryOrdersAtStage = await prisma.deliveryOrder.findMany({
+      where: {
+        status: {
+          in: ['created', 'at_area_office']
+        }
+      },
       include: {
         issues: {
           where: { status: 'OPEN' }
@@ -32,14 +37,23 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const totalCreated = deliveryOrders.length;
-    const pendingForward = deliveryOrders.filter(
-      do_ => do_.status === 'created' || do_.status === 'at_area_office'
-    ).length;
-    const forwarded = deliveryOrders.filter(
-      do_ => !['created', 'at_area_office'].includes(do_.status)
-    ).length;
-    const withIssues = deliveryOrders.filter(
+    // Get total count of all DOs ever created
+    const totalCreated = await prisma.deliveryOrder.count();
+
+    // Get count of forwarded DOs (beyond Area Office stage)
+    const forwarded = await prisma.deliveryOrder.count({
+      where: {
+        status: {
+          notIn: ['created', 'at_area_office']
+        }
+      }
+    });
+
+    // Pending forward are those currently at Area Office stage
+    const pendingForward = deliveryOrdersAtStage.length;
+
+    // Count DOs with open issues at Area Office stage
+    const withIssues = deliveryOrdersAtStage.filter(
       do_ => do_.issues.length > 0
     ).length;
 

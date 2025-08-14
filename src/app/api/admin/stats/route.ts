@@ -38,11 +38,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     const inProgress = deliveryOrders.filter(
-      do_ => !['CREATED', 'AT_ROAD_SALE'].includes(do_.status)
+      do_ => !['created', 'at_road_sale'].includes(do_.status)
     ).length;
 
     const completed = deliveryOrders.filter(
-      do_ => do_.status === 'AT_ROAD_SALE'
+      do_ => do_.status === 'at_road_sale'
     ).length;
 
     return NextResponse.json({
