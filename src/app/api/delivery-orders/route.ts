@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       case 'CISF':
         // CISF can see all DOs that need their approval or have been approved by them
         whereConditions.OR = [
-          { status: { in: ['at_project_office', 'received_at_project_office'] } },
+          { status: { in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved'] } },
           { cisfApproved: true }
         ];
         break;
