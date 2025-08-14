@@ -5,9 +5,10 @@ import { verifyToken } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Verify admin authentication
     const token = request.cookies.get('token')?.value;
     
@@ -25,8 +26,6 @@ export async function POST(
         { status: 401 }
       );
     }
-
-    const { id } = params;
 
     // Find the user to send reset email to
     const targetUser = await prisma.user.findUnique({

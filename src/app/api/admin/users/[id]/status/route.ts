@@ -4,9 +4,10 @@ import { prisma } from '@/lib/db';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -29,7 +30,7 @@ export async function PATCH(
     const { isActive } = body;
 
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: { isActive },
       select: {
         id: true,

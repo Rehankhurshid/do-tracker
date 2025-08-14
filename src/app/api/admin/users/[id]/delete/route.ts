@@ -4,11 +4,11 @@ import { verifyToken } from "@/lib/auth";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get the userId from params - await it for Next.js 13+
-    const { id: userId } = await Promise.resolve(params);
+    const { id: userId } = await params;
     
     const token = request.cookies.get("token")?.value;
     if (!token) {

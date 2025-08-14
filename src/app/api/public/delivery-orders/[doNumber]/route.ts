@@ -3,12 +3,13 @@ import { prisma } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { doNumber: string } }
+  { params }: { params: Promise<{ doNumber: string }> }
 ) {
   try {
+    const { doNumber } = await params;
     const deliveryOrder = await prisma.deliveryOrder.findUnique({
       where: {
-        doNumber: params.doNumber,
+        doNumber,
       },
       include: {
         party: {
