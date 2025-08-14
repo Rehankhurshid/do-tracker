@@ -117,6 +117,13 @@ export default function PartyManagementPage() {
           description: "Party deleted successfully",
         });
         fetchUserAndData();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete party",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       toast({

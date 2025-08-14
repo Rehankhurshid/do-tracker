@@ -44,6 +44,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function ProcessDOsPage() {
   const router = useRouter();
@@ -1161,19 +1168,22 @@ export default function ProcessDOsPage() {
             <div className="space-y-4 my-4">
               <div className="space-y-2">
                 <Label htmlFor="issue-type">Issue Type</Label>
-                <select
-                  id="issue-type"
+                <Select
                   value={reportIssueDialog.issueType}
-                  onChange={(e) => setReportIssueDialog({ ...reportIssueDialog, issueType: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  onValueChange={(value) => setReportIssueDialog({ ...reportIssueDialog, issueType: value })}
                 >
-                  <option value="QUALITY">Quality Issue</option>
-                  <option value="QUANTITY">Quantity Mismatch</option>
-                  <option value="DOCUMENTATION">Documentation Error</option>
-                  <option value="DAMAGE">Damage/Defect</option>
-                  <option value="DELAY">Delay/Timeline Issue</option>
-                  <option value="OTHER">Other</option>
-                </select>
+                  <SelectTrigger id="issue-type">
+                    <SelectValue placeholder="Select issue type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="QUALITY">Quality Issue</SelectItem>
+                    <SelectItem value="QUANTITY">Quantity Mismatch</SelectItem>
+                    <SelectItem value="DOCUMENTATION">Documentation Error</SelectItem>
+                    <SelectItem value="DAMAGE">Damage/Defect</SelectItem>
+                    <SelectItem value="DELAY">Delay/Timeline Issue</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
