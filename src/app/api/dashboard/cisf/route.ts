@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
       prisma.deliveryOrder.count({
         where: {
           OR: [
-            { status: "PENDING_APPROVAL" },
+            { status: "AT_PROJECT_OFFICE" },
+            { status: "RECEIVED_AT_PROJECT_OFFICE" },
             { status: "PROJECT_APPROVED" },
           ],
           cisfApproved: false,
