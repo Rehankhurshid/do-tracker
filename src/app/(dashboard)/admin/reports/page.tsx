@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReportStats {
   totalOrders: number;
@@ -57,6 +58,7 @@ interface ReportStats {
 
 export default function AdminReportsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ReportStats>({
@@ -121,9 +123,25 @@ export default function AdminReportsPage() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        
+        toast({
+          title: "✅ Report Exported",
+          description: `Your ${type} report has been downloaded successfully`,
+        });
+      } else {
+        toast({
+          title: "Export Failed",
+          description: "Unable to export the report. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: "Something went wrong while exporting the report",
+        variant: "destructive",
+      });
     }
   };
 

@@ -23,12 +23,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Archive, RotateCcw } from "lucide-react";
 
 export default function PartyManagementPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [parties, setParties] = useState<any[]>([]);
+  const [archivedParties, setArchivedParties] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("active");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -62,9 +66,16 @@ export default function PartyManagementPage() {
 
       setCurrentUser(userData.user);
 
-      const partiesRes = await fetch("/api/admin/parties");
+      // Fetch all parties (including archived)
+      const partiesRes = await fetch("/api/admin/parties?includeArchived=true");
       const partiesData = await partiesRes.json();
-      setParties(partiesData);
+      
+      // Separate active and archived parties
+      const active = partiesData.filter((p: any) => !p.isArchived);
+      const archived = partiesData.filter((p: any) => p.isArchived);
+      
+      setParties(active);
+      setArchivedParties(archived);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -94,8 +105,10 @@ export default function PartyManagementPage() {
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: editingParty ? "Party updated successfully" : "Party created successfully",
+          title: editingParty ? "✅ Party Updated" : "✅ Party Created",
+          description: editingParty 
+            ? `${formData.name} has been updated successfully`
+            : `${formData.name} has been created successfully`,
         });
         setDialogOpen(false);
         setEditingParty(null);
@@ -118,6 +131,37 @@ export default function PartyManagementPage() {
     }
   };
 
+  const restoreParty = async (party: any) => {
+    try {
+      const response = await fetch(`/api/admin/parties/${party.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "✅ Party Restored",
+          description: `${party.name} has been restored successfully`,
+        });
+        fetchUserAndData();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to restore party",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to restore party",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteParty = async () => {
     if (!deleteDialog.party) return;
     
@@ -130,8 +174,8 @@ export default function PartyManagementPage() {
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: "Party deleted successfully",
+          title: "✅ Party Archived",
+          description: `${deleteDialog.party.name} has been moved to archived`,
         });
         setDeleteDialog({ open: false, party: null, loading: false });
         fetchUserAndData();
@@ -163,7 +207,8 @@ export default function PartyManagementPage() {
     }
   };
 
-  const filteredParties = parties.filter(
+  const currentParties = activeTab === "active" ? parties : archivedParties;
+  const filteredParties = currentParties.filter(
     (party) =>
       party.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       party.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -271,27 +316,39 @@ export default function PartyManagementPage() {
             </Dialog>
           </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <CardTitle>Parties</CardTitle>
-                  <CardDescription>All registered parties</CardDescription>
-                </div>
-                <div className="w-full sm:w-64">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search parties..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
+          <Tabs defaultValue="active" value={activeTab} onValueChange={setActiveTab}>
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <CardTitle>Parties</CardTitle>
+                    <CardDescription>Manage registered parties</CardDescription>
+                  </div>
+                  <div className="w-full sm:w-64">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search parties..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
+                <TabsList className="grid w-full grid-cols-2 mt-4">
+                  <TabsTrigger value="active" className="flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Active ({parties.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="archived" className="flex items-center gap-2">
+                    <Archive className="h-4 w-4" />
+                    Archived ({archivedParties.length})
+                  </TabsTrigger>
+                </TabsList>
+              </CardHeader>
+              <CardContent>
+                <TabsContent value={activeTab} className="mt-0">
               {/* Desktop Table View */}
               <div className="hidden md:block">
                 <Table>
@@ -336,30 +393,44 @@ export default function PartyManagementPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setEditingParty(party);
-                                setFormData({
-                                  name: party.name,
-                                  contactPerson: party.contactPerson || "",
-                                  phone: party.phone || "",
-                                  email: party.email || "",
-                                  address: party.address || "",
-                                });
-                                setDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setDeleteDialog({ open: true, party, loading: false })}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
+                            {activeTab === "active" ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingParty(party);
+                                    setFormData({
+                                      name: party.name,
+                                      contactPerson: party.contactPerson || "",
+                                      phone: party.phone || "",
+                                      email: party.email || "",
+                                      address: party.address || "",
+                                    });
+                                    setDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setDeleteDialog({ open: true, party, loading: false })}
+                                  title="Archive party"
+                                >
+                                  <Archive className="h-4 w-4 text-amber-600" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => restoreParty(party)}
+                                title="Restore party"
+                              >
+                                <RotateCcw className="h-4 w-4 text-green-600" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -430,40 +501,65 @@ export default function PartyManagementPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-3 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingParty(party);
-                          setFormData({
-                            name: party.name,
-                            contactPerson: party.contactPerson || "",
-                            phone: party.phone || "",
-                            email: party.email || "",
-                            address: party.address || "",
-                          });
-                          setDialogOpen(true);
-                        }}
-                        className="flex-1"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span className="ml-2">Edit</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteDialog({ open: true, party, loading: false })}
-                        className="flex-1"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                        <span className="ml-2">Delete</span>
-                      </Button>
+                      {activeTab === "active" ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingParty(party);
+                              setFormData({
+                                name: party.name,
+                                contactPerson: party.contactPerson || "",
+                                phone: party.phone || "",
+                                email: party.email || "",
+                                address: party.address || "",
+                              });
+                              setDialogOpen(true);
+                            }}
+                            className="flex-1"
+                          >
+                            <Edit className="h-4 w-4" />
+                            <span className="ml-2">Edit</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteDialog({ open: true, party, loading: false })}
+                            className="flex-1"
+                            title="Archive party"
+                          >
+                            <Archive className="h-4 w-4 text-amber-600" />
+                            <span className="ml-2">Archive</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => restoreParty(party)}
+                            className="flex-1"
+                            title="Restore party"
+                          >
+                            <RotateCcw className="h-4 w-4 text-green-600" />
+                            <span className="ml-2">Restore</span>
+                          </Button>
+                          {party.archivedAt && (
+                            <div className="flex-1 text-xs text-muted-foreground text-center pt-2">
+                              Archived on {new Date(party.archivedAt).toLocaleDateString()}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </motion.div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+                </TabsContent>
+              </CardContent>
+            </Card>
+          </Tabs>
         </motion.div>
 
         {/* Delete Confirmation Dialog */}
@@ -474,15 +570,21 @@ export default function PartyManagementPage() {
         }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Party</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{deleteDialog.party?.name}"?
-                {deleteDialog.party?.deliveryOrders?.length > 0 && (
-                  <span className="block mt-2 text-red-600">
-                    Warning: This party has {deleteDialog.party.deliveryOrders.length} associated delivery order(s).
-                  </span>
-                )}
-                This action cannot be undone.
+              <AlertDialogTitle>Archive Party</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  <p>Are you sure you want to archive "{deleteDialog.party?.name}"?</p>
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-amber-800 dark:text-amber-200 text-sm">
+                      <strong>Note:</strong> Archiving will hide this party from active lists, but it can be restored anytime from the Archived tab.
+                    </p>
+                    {deleteDialog.party?._count?.deliveryOrders > 0 && (
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+                        This party has {deleteDialog.party._count.deliveryOrders} associated delivery order{deleteDialog.party._count.deliveryOrders !== 1 ? 's' : ''}.
+                      </p>
+                    )}
+                  </div>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -493,9 +595,9 @@ export default function PartyManagementPage() {
                   deleteParty();
                 }}
                 disabled={deleteDialog.loading}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-amber-600 hover:bg-amber-700"
               >
-                {deleteDialog.loading ? "Deleting..." : "Delete"}
+                {deleteDialog.loading ? "Archiving..." : "Archive"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

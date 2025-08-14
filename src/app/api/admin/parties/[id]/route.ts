@@ -72,38 +72,70 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Check if party has associated delivery orders
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      where: { partyId: id },
-      select: { doNumber: true }
-    });
-
-    if (deliveryOrders.length > 0) {
-      const doNumbers = deliveryOrders.slice(0, 3).map(d => d.doNumber).join(', ');
-      const moreText = deliveryOrders.length > 3 ? ` and ${deliveryOrders.length - 3} more` : '';
-      
-      return NextResponse.json(
-        { 
-          error: `Cannot delete this party. ${deliveryOrders.length} delivery order(s) are using this party.`,
-          details: `Associated DOs: ${doNumbers}${moreText}. Please delete or reassign these delivery orders first.`,
-          doCount: deliveryOrders.length
-        },
-        { status: 400 }
-      );
-    }
-
-    // Delete party
-    await prisma.party.delete({
-      where: { id }
+    // Archive the party instead of deleting
+    const party = await prisma.party.update({
+      where: { id },
+      data: { 
+        isArchived: true,
+        archivedAt: new Date()
+      }
     });
 
     return NextResponse.json({ 
-      message: 'Party deleted successfully'
+      message: 'Party archived successfully',
+      party
     });
   } catch (error) {
-    console.error('Error deleting party:', error);
+    console.error('Error archiving party:', error);
     return NextResponse.json(
-      { error: 'Failed to delete party' },
+      { error: 'Failed to archive party' },
+      { status: 500 }
+    );
+  }
+}
+
+// Restore archived party
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const token = request.cookies.get('token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { action } = body;
+
+    if (action !== 'restore') {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
+    // Restore the party
+    const party = await prisma.party.update({
+      where: { id },
+      data: { 
+        isArchived: false,
+        archivedAt: null
+      }
+    });
+
+    return NextResponse.json({ 
+      message: 'Party restored successfully',
+      party
+    });
+  } catch (error) {
+    console.error('Error restoring party:', error);
+    return NextResponse.json(
+      { error: 'Failed to restore party' },
       { status: 500 }
     );
   }

@@ -22,10 +22,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get query parameter to include archived parties
+    const { searchParams } = new URL(request.url);
+    const includeArchived = searchParams.get('includeArchived') === 'true';
+
     const parties = await prisma.party.findMany({
+      where: includeArchived ? {} : { isArchived: false },
       orderBy: {
         createdAt: 'desc',
       },
+      include: {
+        _count: {
+          select: {
+            deliveryOrders: true
+          }
+        }
+      }
     });
 
     return NextResponse.json(parties);

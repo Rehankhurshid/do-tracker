@@ -90,8 +90,8 @@ function ResetPasswordForm() {
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: "Password set successfully! Redirecting to login...",
+          title: "✅ Password Set Successfully",
+          description: "Your password has been updated. Redirecting to login...",
         });
         setTimeout(() => {
           router.push("/login");
@@ -131,7 +131,7 @@ function ResetPasswordForm() {
 
       if (response.ok) {
         toast({
-          title: "Success",
+          title: "✅ Email Sent",
           description: "If an account exists with this email, you will receive a password reset link.",
         });
       } else {
