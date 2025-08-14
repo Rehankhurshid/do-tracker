@@ -76,7 +76,7 @@ export async function POST(
         deliveryOrderId: id,
         fromStatus: deliveryOrder.status,
         toStatus: "at_road_sale",
-        actionById: user.id,
+        actionById: user.userId,
         notes: notes || "Forwarded to Road Sale after dual approval",
       },
     });

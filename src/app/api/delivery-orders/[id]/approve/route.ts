@@ -96,7 +96,7 @@ export async function POST(
         deliveryOrderId: id,
         fromStatus: deliveryOrder.status,
         toStatus: updatedOrder.status,
-        actionById: user.id,
+        actionById: user.userId,
         notes: notes || `Approved by ${role}`,
       },
     });
