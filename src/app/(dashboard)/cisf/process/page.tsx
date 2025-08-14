@@ -130,13 +130,27 @@ export default function CISFProcessPage() {
       });
 
       if (response.ok) {
+        const updatedOrder = await response.json();
         toast({
           title: "✅ Order Approved",
           description: `DO #${approvalDialog.doNumber} has been approved by CISF`,
         });
         setApprovalDialog({ open: false, doId: "", doNumber: "" });
         setApprovalNotes("");
-        fetchDeliveryOrders();
+        
+        // Update the order in the local state immediately for instant feedback
+        setDeliveryOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === approvalDialog.doId 
+              ? { ...order, cisfApproved: true, status: updatedOrder.deliveryOrder?.status || order.status }
+              : order
+          )
+        );
+        
+        // Also fetch fresh data from server
+        setTimeout(() => {
+          fetchDeliveryOrders();
+        }, 500);
       } else {
         const error = await response.json();
         toast({
