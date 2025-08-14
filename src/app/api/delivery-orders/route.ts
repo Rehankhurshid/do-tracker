@@ -29,10 +29,20 @@ export async function GET(request: NextRequest) {
     // Role-based filtering - Department-wide visibility
     switch (payload.role) {
       case 'AREA_OFFICE':
-        // Area office can see all DOs at their stage
-        whereConditions.status = {
-          in: ['created', 'at_area_office']
-        };
+        // Area office can see all DOs at their stage AND those forwarded from their office
+        whereConditions.OR = [
+          {
+            status: {
+              in: ['created', 'at_area_office']
+            }
+          },
+          {
+            // Also show DOs that were forwarded (beyond Area Office stage)
+            status: {
+              in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
+            }
+          }
+        ];
         break;
       case 'PROJECT_OFFICE':
         // Project office can see all DOs at their stage and beyond
@@ -81,6 +91,20 @@ export async function GET(request: NextRequest) {
                 username: true,
               }
             }
+          }
+        },
+        workflowHistory: {
+          include: {
+            actionBy: {
+              select: {
+                id: true,
+                username: true,
+                role: true,
+              }
+            }
+          },
+          orderBy: {
+            timestamp: 'desc'
           }
         },
       },

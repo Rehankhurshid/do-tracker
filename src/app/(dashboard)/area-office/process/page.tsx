@@ -450,9 +450,29 @@ export default function ProcessDOsPage() {
     order.issues?.some((issue: any) => issue.status === "OPEN")
   );
 
-  // With department-wide visibility, Area Office can only see DOs at their stage
-  // Once forwarded to Project Office, DOs are no longer visible here
-  const forwardedOrders: any[] = [];
+  // Show DOs that have been forwarded from Area Office
+  const forwardedOrders = deliveryOrders.filter(order => 
+    order.status === "at_project_office" || 
+    order.status === "received_at_project_office" || 
+    order.status === "at_road_sale"
+  );
+
+  // Helper function to get who forwarded the DO
+  const getForwardedBy = (order: any) => {
+    const forwardAction = order.workflowHistory?.find((h: any) => 
+      h.toStatus === 'at_project_office' && h.fromStatus === 'at_area_office'
+    );
+    return forwardAction?.actionBy;
+  };
+
+  // Get current user info from token
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => setCurrentUser(data))
+      .catch(() => {});
+  }, []);
 
   const renderOrdersTable = (orders: any[], emptyMessage?: string) => {
     if (orders.length === 0) {
@@ -499,7 +519,21 @@ export default function ProcessDOsPage() {
               <TableCell>{order.party?.name}</TableCell>
               <TableCell>{order.authorizedPerson}</TableCell>
               <TableCell>{format(new Date(order.validTo), "dd/MM/yyyy")}</TableCell>
-              <TableCell>{getStatusBadge(order.status)}</TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  {getStatusBadge(order.status)}
+                  {(order.status === "at_project_office" || order.status === "received_at_project_office" || order.status === "at_road_sale") && (
+                    <span className="text-xs text-muted-foreground">
+                      {(() => {
+                        const forwardedBy = getForwardedBy(order);
+                        if (!forwardedBy) return "Forwarded";
+                        if (currentUser?.id === forwardedBy.id) return "Forwarded by you";
+                        return `Forwarded by ${forwardedBy.username}`;
+                      })()}
+                    </span>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>
                 {order.issues?.length > 0 ? (
                   <Button
@@ -566,7 +600,7 @@ export default function ProcessDOsPage() {
                       </Button>
                     </>
                   )}
-                  {canForward(order) && (
+                  {canForward(order) ? (
                     <Button
                       variant="default"
                       size="sm"
@@ -587,7 +621,9 @@ export default function ProcessDOsPage() {
                         </>
                       )}
                     </Button>
-                  )}
+                  ) : (order.status !== "at_area_office" && order.status !== "created") ? (
+                    <span className="text-sm text-muted-foreground">Already forwarded</span>
+                  ) : null}
                 </div>
               </TableCell>
             </motion.tr>
@@ -706,7 +742,19 @@ export default function ProcessDOsPage() {
                     <p className="font-semibold text-base">{order.doNumber}</p>
                     <p className="text-sm text-muted-foreground">{order.party?.name}</p>
                   </div>
-                  {getStatusBadge(order.status)}
+                  <div className="flex flex-col items-end gap-1">
+                    {getStatusBadge(order.status)}
+                    {(order.status === "at_project_office" || order.status === "received_at_project_office" || order.status === "at_road_sale") && (
+                      <span className="text-xs text-muted-foreground">
+                        {(() => {
+                          const forwardedBy = getForwardedBy(order);
+                          if (!forwardedBy) return "Forwarded";
+                          if (currentUser?.id === forwardedBy.id) return "by you";
+                          return `by ${forwardedBy.username}`;
+                        })()}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Details */}
@@ -932,6 +980,11 @@ export default function ProcessDOsPage() {
                 <TabsTrigger value="forwarded" className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
                   Forwarded
+                  {forwardedOrders.length > 0 && (
+                    <Badge variant="outline" className="ml-1">
+                      {forwardedOrders.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="pending" className="mt-4">
@@ -941,19 +994,7 @@ export default function ProcessDOsPage() {
                 {renderOrdersTable(ordersWithIssues, "No delivery orders with open issues. All issues have been resolved.")}
               </TabsContent>
               <TabsContent value="forwarded" className="mt-4">
-                <div className="text-center py-8 space-y-4">
-                  <div className="flex justify-center">
-                    <Send className="h-12 w-12 text-muted-foreground/50" />
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">
-                      Forwarded delivery orders have moved to Project Office
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Once a DO is forwarded, it becomes visible to Project Office and CISF departments for processing
-                    </p>
-                  </div>
-                </div>
+                {renderOrdersTable(forwardedOrders, "No delivery orders have been forwarded yet.")}
               </TabsContent>
             </Tabs>
           )}
