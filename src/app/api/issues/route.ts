@@ -32,28 +32,13 @@ export async function GET(request: NextRequest) {
       whereConditions.status = status;
     }
 
-    // Role-based filtering
+    // Role-based filtering - Department-wide visibility
     if (payload.role === 'AREA_OFFICE') {
-      // Area office can see issues for their created DOs
-      const userDOs = await prisma.deliveryOrder.findMany({
-        where: { createdById: payload.userId },
-        select: { id: true }
-      });
-      const doIds = userDOs.map(d => d.id);
-      if (doIds.length > 0) {
-        whereConditions.deliveryOrderId = deliveryOrderId 
-          ? { equals: deliveryOrderId } 
-          : { in: doIds };
-      } else {
-        // No DOs created by this user
-        return NextResponse.json([]);
-      }
-    } else if (payload.role === 'PROJECT_OFFICE') {
-      // Project office can see issues for DOs at their stage
+      // Area office can see issues for all DOs at their stage
       const relevantDOs = await prisma.deliveryOrder.findMany({
         where: {
           status: {
-            in: ['at_project_office', 'received_at_project_office']
+            in: ['created', 'at_area_office']
           }
         },
         select: { id: true }
@@ -66,8 +51,45 @@ export async function GET(request: NextRequest) {
       } else {
         return NextResponse.json([]);
       }
+    } else if (payload.role === 'PROJECT_OFFICE') {
+      // Project office can see issues for all DOs at their stage and beyond
+      const relevantDOs = await prisma.deliveryOrder.findMany({
+        where: {
+          status: {
+            in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
+          }
+        },
+        select: { id: true }
+      });
+      const doIds = relevantDOs.map(d => d.id);
+      if (doIds.length > 0) {
+        whereConditions.deliveryOrderId = deliveryOrderId 
+          ? { equals: deliveryOrderId } 
+          : { in: doIds };
+      } else {
+        return NextResponse.json([]);
+      }
+    } else if (payload.role === 'CISF') {
+      // CISF can see issues for DOs that need their approval or have been approved by them
+      const relevantDOs = await prisma.deliveryOrder.findMany({
+        where: {
+          OR: [
+            { status: { in: ['at_project_office', 'received_at_project_office'] } },
+            { cisfApproved: true }
+          ]
+        },
+        select: { id: true }
+      });
+      const doIds = relevantDOs.map(d => d.id);
+      if (doIds.length > 0) {
+        whereConditions.deliveryOrderId = deliveryOrderId 
+          ? { equals: deliveryOrderId } 
+          : { in: doIds };
+      } else {
+        return NextResponse.json([]);
+      }
     } else if (payload.role === 'ROAD_SALE') {
-      // Road sale can see issues for DOs at their stage
+      // Road sale can see issues for all DOs at their stage
       const relevantDOs = await prisma.deliveryOrder.findMany({
         where: { status: 'at_road_sale' },
         select: { id: true }

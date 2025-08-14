@@ -26,20 +26,32 @@ export async function GET(request: NextRequest) {
     // Build filter conditions based on user role
     const whereConditions: Record<string, any> = {};
 
-    // Role-based filtering
+    // Role-based filtering - Department-wide visibility
     switch (payload.role) {
       case 'AREA_OFFICE':
-        whereConditions.createdById = payload.userId;
+        // Area office can see all DOs at their stage
+        whereConditions.status = {
+          in: ['created', 'at_area_office']
+        };
         break;
       case 'PROJECT_OFFICE':
+        // Project office can see all DOs at their stage and beyond
         whereConditions.status = {
           in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
         };
         break;
+      case 'CISF':
+        // CISF can see all DOs that need their approval or have been approved by them
+        whereConditions.OR = [
+          { status: { in: ['at_project_office', 'received_at_project_office'] } },
+          { cisfApproved: true }
+        ];
+        break;
       case 'ROAD_SALE':
+        // Road Sale can see all DOs at their stage
         whereConditions.status = 'at_road_sale';
         break;
-      // Admin can see all
+      // Admin can see all (no filter)
     }
 
     // Apply additional filters

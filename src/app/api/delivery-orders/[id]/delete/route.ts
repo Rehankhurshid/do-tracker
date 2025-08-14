@@ -32,23 +32,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Delivery order not found' }, { status: 404 });
     }
 
-    // Check permissions: Only Area Office can delete, and only if the DO is at their stage
-    if (payload.role !== 'AREA_OFFICE') {
+    // Check permissions: Only Area Office or Admin can delete
+    if (payload.role !== 'AREA_OFFICE' && payload.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only Area Office can delete delivery orders' },
         { status: 403 }
       );
     }
 
-    // Check if the user created this DO
-    if (deliveryOrder.createdById !== payload.userId) {
-      return NextResponse.json(
-        { error: 'You can only delete delivery orders you created' },
-        { status: 403 }
-      );
-    }
-
     // Check if DO is still at Area Office stage (not forwarded)
+    // Any Area Office user can delete DOs at their stage
     if (deliveryOrder.status !== 'at_area_office' && deliveryOrder.status !== 'created') {
       return NextResponse.json(
         { error: 'Cannot delete delivery order that has been forwarded' },

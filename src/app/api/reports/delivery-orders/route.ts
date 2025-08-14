@@ -25,14 +25,28 @@ export async function GET(request: NextRequest) {
     // Build where clause based on user role and filters
     const whereClause: any = {};
 
-    // Role-based filtering
+    // Role-based filtering - Department-wide visibility
     if (payload.role === 'AREA_OFFICE') {
-      whereClause.createdById = payload.userId;
+      // Area office can see all DOs at their stage
+      whereClause.status = {
+        in: ['created', 'at_area_office']
+      };
     } else if (payload.role === 'PROJECT_OFFICE') {
+      // Project office can see all DOs at their stage and beyond
       whereClause.status = {
         in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
       };
+    } else if (payload.role === 'CISF') {
+      // CISF can see all DOs that need their approval or have been approved by them
+      whereClause.OR = [
+        { status: { in: ['at_project_office', 'received_at_project_office'] } },
+        { cisfApproved: true }
+      ];
+    } else if (payload.role === 'ROAD_SALE') {
+      // Road Sale can see all DOs at their stage
+      whereClause.status = 'at_road_sale';
     }
+    // Admin can see all (no filter added)
 
     // Date range filter
     if (startDate && endDate) {
