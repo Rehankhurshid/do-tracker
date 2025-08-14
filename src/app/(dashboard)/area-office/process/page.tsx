@@ -141,7 +141,7 @@ export default function ProcessDOsPage() {
   const canForward = (order: any) => {
     // Check if there are any unresolved issues
     const hasUnresolvedIssues = order.issues?.some((issue: any) => issue.status === "OPEN");
-    return order.status === "at_area_office" && !hasUnresolvedIssues;
+    return (order.status === "at_area_office" || order.status === "created") && !hasUnresolvedIssues;
   };
 
   const openConfirmDialog = (order: any) => {
@@ -441,12 +441,12 @@ export default function ProcessDOsPage() {
   };
 
   const pendingOrders = deliveryOrders.filter(order => 
-    order.status === "at_area_office" && 
+    (order.status === "at_area_office" || order.status === "created") && 
     !order.issues?.some((issue: any) => issue.status === "OPEN")
   );
 
   const ordersWithIssues = deliveryOrders.filter(order => 
-    order.status === "at_area_office" && 
+    (order.status === "at_area_office" || order.status === "created") && 
     order.issues?.some((issue: any) => issue.status === "OPEN")
   );
 
@@ -454,11 +454,11 @@ export default function ProcessDOsPage() {
   // Once forwarded to Project Office, DOs are no longer visible here
   const forwardedOrders: any[] = [];
 
-  const renderOrdersTable = (orders: any[]) => {
+  const renderOrdersTable = (orders: any[], emptyMessage?: string) => {
     if (orders.length === 0) {
       return (
         <div className="text-center py-8 text-muted-foreground">
-          No delivery orders found in this category.
+          {emptyMessage || "No delivery orders found in this category."}
         </div>
       );
     }
@@ -913,11 +913,21 @@ export default function ProcessDOsPage() {
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="pending" className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Ready to Forward ({pendingOrders.length})
+                  Ready to Forward
+                  {pendingOrders.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {pendingOrders.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="issues" className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  With Issues ({ordersWithIssues.length})
+                  With Issues
+                  {ordersWithIssues.length > 0 && (
+                    <Badge variant="destructive" className="ml-1">
+                      {ordersWithIssues.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="forwarded" className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
@@ -925,10 +935,10 @@ export default function ProcessDOsPage() {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="pending" className="mt-4">
-                {renderOrdersTable(pendingOrders)}
+                {renderOrdersTable(pendingOrders, "No delivery orders ready to forward. Orders with unresolved issues must be resolved first.")}
               </TabsContent>
               <TabsContent value="issues" className="mt-4">
-                {renderOrdersTable(ordersWithIssues)}
+                {renderOrdersTable(ordersWithIssues, "No delivery orders with open issues. All issues have been resolved.")}
               </TabsContent>
               <TabsContent value="forwarded" className="mt-4">
                 <div className="text-center py-8 space-y-4">
