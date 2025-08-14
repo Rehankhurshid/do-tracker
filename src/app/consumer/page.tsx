@@ -44,10 +44,10 @@ export default function ConsumerPortal() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "AT_ROAD_SALE":
+      case "at_road_sale":
         return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case "CREATED":
-      case "AT_AREA_OFFICE":
+      case "created":
+      case "at_area_office":
         return <Clock className="h-5 w-5 text-yellow-600" />;
       default:
         return <ArrowRight className="h-5 w-5 text-blue-600" />;
@@ -56,15 +56,15 @@ export default function ConsumerPortal() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "CREATED":
+      case "created":
         return "Created";
-      case "AT_AREA_OFFICE":
+      case "at_area_office":
         return "At Area Office";
-      case "AT_PROJECT_OFFICE":
+      case "at_project_office":
         return "At Project Office";
-      case "RECEIVED_AT_PROJECT_OFFICE":
+      case "received_at_project_office":
         return "Received at Project Office";
-      case "AT_ROAD_SALE":
+      case "at_road_sale":
         return "Completed - At Road Sale";
       default:
         return status;
@@ -73,10 +73,10 @@ export default function ConsumerPortal() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "AT_ROAD_SALE":
+      case "at_road_sale":
         return "default";
-      case "CREATED":
-      case "AT_AREA_OFFICE":
+      case "created":
+      case "at_area_office":
         return "secondary";
       default:
         return "outline";

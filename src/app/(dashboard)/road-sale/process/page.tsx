@@ -82,7 +82,7 @@ export default function RoadSaleProcessPage() {
         const data = await response.json();
         // Filter for Road Sale - only show orders that have both approvals or have reached road sale
         const roadSaleOrders = data.filter((order: any) => 
-          order.status === 'AT_ROAD_SALE' || order.status === 'BOTH_APPROVED'
+          order.status === 'at_road_sale' || order.status === 'both_approved'
         );
         setDeliveryOrders(roadSaleOrders);
       } else {

@@ -1,13 +1,15 @@
 export type UserRole = 'ADMIN' | 'AREA_OFFICE' | 'PROJECT_OFFICE' | 'CISF' | 'ROAD_SALE';
 
 export type DOStatus = 
-  | 'CREATED' 
-  | 'AT_AREA_OFFICE' 
-  | 'PENDING_APPROVAL'  // Waiting for both Project Office and CISF approval
-  | 'PROJECT_APPROVED'  // Project Office approved, waiting for CISF
-  | 'CISF_APPROVED'     // CISF approved, waiting for Project Office  
-  | 'BOTH_APPROVED'     // Both approved, ready for Road Sale
-  | 'AT_ROAD_SALE';
+  | 'created' 
+  | 'at_area_office' 
+  | 'pending_approval'  // Waiting for both Project Office and CISF approval
+  | 'at_project_office' // At Project Office
+  | 'received_at_project_office' // Received at Project Office
+  | 'project_approved'  // Project Office approved, waiting for CISF
+  | 'cisf_approved'     // CISF approved, waiting for Project Office  
+  | 'both_approved'     // Both approved, ready for Road Sale
+  | 'at_road_sale';
 
 export type IssueStatus = 'OPEN' | 'RESOLVED';
 

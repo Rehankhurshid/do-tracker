@@ -95,10 +95,10 @@ export default function CISFProcessPage() {
         // Filter for orders that need CISF approval
         // CISF should see orders that are at project office or have been received there
         const cisfOrders = data.filter((order: any) => 
-          order.status === 'AT_PROJECT_OFFICE' || 
-          order.status === 'RECEIVED_AT_PROJECT_OFFICE' ||
-          order.status === 'PROJECT_APPROVED' ||
-          (!order.cisfApproved && (order.status === 'AT_CISF' || order.projectApproved))
+          order.status === 'at_project_office' || 
+          order.status === 'received_at_project_office' ||
+          order.status === 'project_approved' ||
+          (!order.cisfApproved && (order.status === 'at_cisf' || order.projectApproved))
         );
         setDeliveryOrders(cisfOrders);
       }

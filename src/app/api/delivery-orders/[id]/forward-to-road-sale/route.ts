@@ -60,11 +60,11 @@ export async function POST(
       );
     }
 
-    // Update the delivery order status to AT_ROAD_SALE
+    // Update the delivery order status to at_road_sale
     const updatedOrder = await prisma.deliveryOrder.update({
       where: { id: params.id },
       data: {
-        status: "AT_ROAD_SALE",
+        status: "at_road_sale",
         updatedAt: new Date(),
       },
     });
@@ -74,7 +74,7 @@ export async function POST(
       data: {
         deliveryOrderId: params.id,
         fromStatus: deliveryOrder.status,
-        toStatus: "AT_ROAD_SALE",
+        toStatus: "at_road_sale",
         actionById: user.id,
         notes: notes || "Forwarded to Road Sale after dual approval",
       },

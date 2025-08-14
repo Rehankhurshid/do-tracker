@@ -48,15 +48,15 @@ export default function DeliveryOrdersPage() {
 
   const getStatusColor = (status: DOStatus) => {
     switch (status) {
-      case "CREATED":
+      case "created":
         return "default";
-      case "AT_AREA_OFFICE":
+      case "at_area_office":
         return "secondary";
-      case "AT_PROJECT_OFFICE":
+      case "at_project_office":
         return "outline";
-      case "RECEIVED_AT_PROJECT_OFFICE":
+      case "received_at_project_office":
         return "outline";
-      case "AT_ROAD_SALE":
+      case "at_road_sale":
         return "default";
       default:
         return "secondary";
@@ -65,15 +65,15 @@ export default function DeliveryOrdersPage() {
 
   const getStatusLabel = (status: DOStatus) => {
     switch (status) {
-      case "CREATED":
+      case "created":
         return "Created";
-      case "AT_AREA_OFFICE":
+      case "at_area_office":
         return "At Area Office";
-      case "AT_PROJECT_OFFICE":
+      case "at_project_office":
         return "At Project Office";
-      case "RECEIVED_AT_PROJECT_OFFICE":
+      case "received_at_project_office":
         return "Received at Project";
-      case "AT_ROAD_SALE":
+      case "at_road_sale":
         return "Completed";
       default:
         return status;
@@ -143,11 +143,11 @@ export default function DeliveryOrdersPage() {
                       className="flex h-10 w-full sm:w-40 rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <option value="ALL">All Status</option>
-                      <option value="CREATED">Created</option>
-                      <option value="AT_AREA_OFFICE">At Area Office</option>
-                      <option value="AT_PROJECT_OFFICE">At Project Office</option>
-                      <option value="RECEIVED_AT_PROJECT_OFFICE">Received at Project</option>
-                      <option value="AT_ROAD_SALE">Completed</option>
+                      <option value="created">Created</option>
+                      <option value="at_area_office">At Area Office</option>
+                      <option value="at_project_office">At Project Office</option>
+                      <option value="received_at_project_office">Received at Project</option>
+                      <option value="at_road_sale">Completed</option>
                     </select>
                   </div>
                 </div>

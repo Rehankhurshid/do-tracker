@@ -52,7 +52,7 @@ model DeliveryOrder {
   authorizedPerson  String
   validFrom         DateTime
   validTo           DateTime
-  status            String            @default("CREATED") // CREATED, AT_AREA_OFFICE, AT_PROJECT_OFFICE, AT_CISF, PROJECT_APPROVED, CISF_APPROVED, BOTH_APPROVED, AT_ROAD_SALE
+  status            String            @default("created") // created, at_area_office, at_project_office, at_cisf, project_approved, cisf_approved, both_approved, at_road_sale
   projectApproved   Boolean           @default(false)
   cisfApproved      Boolean           @default(false)
   items             String?           // JSON string of items array

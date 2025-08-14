@@ -69,17 +69,17 @@ export async function POST(
       updateData.projectApproved = true;
       // If CISF has also approved, mark as both approved
       if (deliveryOrder.cisfApproved) {
-        updateData.status = "BOTH_APPROVED";
+        updateData.status = "both_approved";
       } else {
-        updateData.status = "PROJECT_APPROVED";
+        updateData.status = "project_approved";
       }
     } else if (role === "CISF") {
       updateData.cisfApproved = true;
       // If Project Office has also approved, mark as both approved
       if (deliveryOrder.projectApproved) {
-        updateData.status = "BOTH_APPROVED";
+        updateData.status = "both_approved";
       } else {
-        updateData.status = "CISF_APPROVED";
+        updateData.status = "cisf_approved";
       }
     }
 
