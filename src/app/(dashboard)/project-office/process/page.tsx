@@ -589,7 +589,7 @@ export default function ProjectOfficeProcessPage() {
                     </Button>
                   )}
                   
-                  {order.status === "received_at_project_office" && !order.projectApproved && (
+                  {(order.status === "received_at_project_office" || order.status === "cisf_approved") && !order.projectApproved && (
                     <Button
                       variant="default"
                       size="sm"
@@ -961,7 +961,7 @@ export default function ProjectOfficeProcessPage() {
               Forward to Road Sale
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to forward this delivery order to Road Sale?
+              Both Project Office and CISF have approved this order. Are you sure you want to forward it to Road Sale?
             </DialogDescription>
           </DialogHeader>
 
