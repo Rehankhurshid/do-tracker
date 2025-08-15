@@ -1,151 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { generateDOCreatedEmail, sendEmail } from '@/lib/email';
+import { requireAuth, ok, fail, parseJson } from '@/app/api/_helpers/handler';
+import { createDO, listForUser } from '@/services/deliveryOrders';
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token');
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const payload = verifyToken(token.value);
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+  const { user, response } = await requireAuth();
+  if (!user) return response!;
 
     // Get query parameters for filtering
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
     const partyId = searchParams.get('partyId');
 
-    // Build filter conditions based on user role
-    const whereConditions: Record<string, any> = {};
-
-    // Role-based filtering - Department-wide visibility
-    switch (payload.role) {
-      case 'AREA_OFFICE':
-        // Area office can see all DOs at their stage AND those forwarded from their office
-        whereConditions.OR = [
-          {
-            status: {
-              in: ['created', 'at_area_office']
-            }
-          },
-          {
-            // Also show DOs that were forwarded (beyond Area Office stage)
-            status: {
-              in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
-            }
-          }
-        ];
-        break;
-      case 'PROJECT_OFFICE':
-        // Project office can see all DOs at their stage and beyond
-        whereConditions.status = {
-          in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved', 'at_road_sale']
-        };
-        break;
-      case 'CISF':
-        // CISF should see all orders at project office stage or beyond
-        whereConditions.status = {
-          in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved', 'at_road_sale']
-        };
-        break;
-      case 'ROAD_SALE':
-        // Road Sale can see all DOs at their stage
-        whereConditions.status = 'at_road_sale';
-        break;
-      // Admin can see all (no filter)
-    }
-
-    // Apply additional filters
-    // Note: We skip status filter for roles with OR conditions to avoid breaking the logic
-    if (status && !whereConditions.OR) {
-      whereConditions.status = status;
-    }
-    if (partyId) {
-      whereConditions.partyId = partyId;
-    }
-
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      where: whereConditions,
-      include: {
-        party: true,
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            role: true,
-          }
-        },
-        issues: {
-          include: {
-            reportedBy: {
-              select: {
-                id: true,
-                username: true,
-              }
-            }
-          }
-        },
-        workflowHistory: {
-          include: {
-            actionBy: {
-              select: {
-                id: true,
-                username: true,
-                role: true,
-              }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-
-    return NextResponse.json(deliveryOrders);
+  const deliveryOrders = await listForUser(user, { status, partyId });
+  return ok(deliveryOrders);
   } catch (error) {
     console.error('Error fetching delivery orders:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  return fail('Internal server error', 500);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token');
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const payload = verifyToken(token.value);
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+  const { user, response } = await requireAuth();
+  if (!user) return response!;
 
     // Only Area Office can create DOs
-    if (payload.role !== 'AREA_OFFICE' && payload.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Only Area Office can create delivery orders' },
-        { status: 403 }
-      );
+    if (user.role !== 'AREA_OFFICE' && user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Only Area Office can create delivery orders' }, { status: 403 });
     }
 
-    const body = await request.json();
+  type CreateBody = { doNumber: string; partyId: string; authorizedPerson: string; validTo: string; notes?: string | null };
+  const { body, response: parseErr } = await parseJson<CreateBody>(request);
+    if (!body) return parseErr!;
     const { doNumber, partyId, authorizedPerson, validTo, notes } = body;
 
     // Validate required fields
@@ -165,51 +54,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if DO number already exists
-    const existingDO = await prisma.deliveryOrder.findUnique({
-      where: { doNumber }
-    });
-
-    if (existingDO) {
-      return NextResponse.json(
-        { error: `DO number ${doNumber} already exists. Please use a different number.` },
-        { status: 400 }
-      );
-    }
-
-    // Create delivery order
-    const deliveryOrder = await prisma.deliveryOrder.create({
-      data: {
-        doNumber,
-        partyId,
-        authorizedPerson,
-        validFrom: new Date(), // Set validFrom to current date
-        validTo: new Date(validTo),
-        status: 'at_area_office',
-        notes: notes || null, // Handle undefined notes
-        createdById: payload.userId,
-      },
-      include: {
-        party: true,
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            role: true,
-          }
-        }
-      }
-    });
-
-    // Create workflow history entry
-    await prisma.workflowHistory.create({
-      data: {
-        deliveryOrderId: deliveryOrder.id,
-        fromStatus: 'created',
-        toStatus: 'at_area_office',
-        actionById: payload.userId,
-        notes: 'Delivery order created',
-      }
-    });
+  // Create via service
+  const deliveryOrder = await createDO(user, { doNumber, partyId, authorizedPerson, validTo, notes });
 
     // Fire-and-forget email notification to Area Office
     (async () => {
@@ -238,7 +84,7 @@ export async function POST(request: NextRequest) {
           authorizedPerson: deliveryOrder.authorizedPerson,
           validFrom: deliveryOrder.validFrom,
           validTo: deliveryOrder.validTo,
-          createdBy: deliveryOrder.createdBy.username || 'Unknown',
+          createdBy: deliveryOrder.createdBy?.username || 'Unknown',
           notes: deliveryOrder.notes,
         });
 
@@ -256,7 +102,7 @@ export async function POST(request: NextRequest) {
       }
     })();
 
-    return NextResponse.json(deliveryOrder, { status: 201 });
+  return ok(deliveryOrder, 201);
   } catch (error: unknown) {
     console.error('Error creating delivery order:', error);
     const err = error as { message?: string } | null;
@@ -264,12 +110,6 @@ export async function POST(request: NextRequest) {
     const errorMessage = process.env.NODE_ENV === 'development' 
       ? (err?.message || 'Internal server error')
       : 'Internal server error';
-    return NextResponse.json(
-      { 
-        error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
-      },
-      { status: 500 }
-    );
+  return fail(errorMessage, 500, process.env.NODE_ENV === 'development' ? String(error) : undefined);
   }
 }

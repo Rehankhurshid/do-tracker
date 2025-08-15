@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { NextRequest } from 'next/server';
+import { requireAuth, ok, fail, parseJson } from '@/app/api/_helpers/handler';
+import { forwardToRoadSale } from '@/services/deliveryOrders';
 
 export async function POST(
   request: NextRequest,
@@ -8,88 +8,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const token = request.cookies.get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { user, response } = await requireAuth();
+    if (!user) return response!;
 
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { body, response: parseErr } = await parseJson<{ notes?: string | null }>(request);
+    if (!body) return parseErr!;
 
-    // Only ADMIN or system can forward to Road Sale after dual approval
-    if (user.role !== "ADMIN" && user.role !== "PROJECT_OFFICE" && user.role !== "CISF") {
-      return NextResponse.json(
-        { error: "You don't have permission to forward to Road Sale" },
-        { status: 403 }
-      );
-    }
-
-    const { notes } = await request.json();
-
-    // Get the delivery order
-    const deliveryOrder = await prisma.deliveryOrder.findUnique({
-      where: { id },
-      include: {
-        issues: {
-          where: { status: "OPEN" },
-        },
-      },
-    });
-
-    if (!deliveryOrder) {
-      return NextResponse.json(
-        { error: "Delivery order not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if both approvals are complete (status should be both_approved)
-    if (deliveryOrder.status !== 'both_approved') {
-      return NextResponse.json(
-        { error: "Both Project Office and CISF must approve before forwarding to Road Sale" },
-        { status: 400 }
-      );
-    }
-
-    // Check for open issues
-    if (deliveryOrder.issues.length > 0) {
-      return NextResponse.json(
-        { error: "Cannot forward order with open issues" },
-        { status: 400 }
-      );
-    }
-
-    // Update the delivery order status to at_road_sale
-    const updatedOrder = await prisma.deliveryOrder.update({
-      where: { id },
-      data: {
-        status: "at_road_sale",
-        updatedAt: new Date(),
-      },
-    });
-
-    // Create workflow history entry
-    await prisma.workflowHistory.create({
-      data: {
-        deliveryOrderId: id,
-        fromStatus: deliveryOrder.status,
-        toStatus: "at_road_sale",
-        actionById: user.userId,
-        notes: notes || "Forwarded to Road Sale after dual approval",
-      },
-    });
-
-    return NextResponse.json({
-      message: "Delivery order forwarded to Road Sale successfully",
-      deliveryOrder: updatedOrder,
-    });
+    const updated = await forwardToRoadSale(user, id, body.notes);
+    return ok({ message: 'Delivery order forwarded to Road Sale successfully', deliveryOrder: updated });
   } catch (error) {
-    console.error("Error forwarding to Road Sale:", error);
-    return NextResponse.json(
-      { error: "Failed to forward to Road Sale" },
-      { status: 500 }
-    );
+    console.error('Error forwarding to Road Sale:', error);
+    return fail('Failed to forward to Road Sale', 500);
   }
 }

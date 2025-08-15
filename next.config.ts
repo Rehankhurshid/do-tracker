@@ -12,8 +12,6 @@ const nextConfig: NextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
-  // Performance optimizations
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
@@ -24,8 +22,8 @@ const nextConfig: NextConfig = {
   },
   // Experimental features for better performance
   experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'framer-motion'],
+  // Leave optimizeCss to Next default; enabling it requires 'critters' at build time
+  optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'framer-motion'],
   },
 };
 
