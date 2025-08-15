@@ -289,6 +289,34 @@ export default function UserManagementPage() {
     }
   };
 
+  // Helper to check if username is corrupted (has multiple deleted_ prefixes)
+  const isCorruptedUsername = (username: string) => {
+    const deleteCount = (username.match(/deleted_/g) || []).length;
+    return deleteCount > 1 || username.length > 50;
+  };
+  
+  // Helper to display username (clean up corrupted ones)
+  const displayUsername = (username: string) => {
+    if (isCorruptedUsername(username)) {
+      // Extract the original username if possible
+      const match = username.match(/deleted_\d+_(.*?)(?:_\d+)?$/);
+      if (match && match[1]) {
+        return (
+          <span className="flex items-center gap-1">
+            <span className="text-red-600">[Corrupted]</span>
+            <span>{match[1]}</span>
+          </span>
+        );
+      }
+      return (
+        <span className="text-red-600" title={username}>
+          [Corrupted User]
+        </span>
+      );
+    }
+    return username;
+  };
+  
   const filteredUsers = users.filter(
     (user) =>
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -550,7 +578,7 @@ export default function UserManagementPage() {
                   <TableBody>
                     {filteredUsers.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.username}</TableCell>
+                        <TableCell className="font-medium">{displayUsername(user.username)}</TableCell>
                         <TableCell>{user.email || "-"}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -615,11 +643,14 @@ export default function UserManagementPage() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
+                                  const corrupted = isCorruptedUsername(user.username);
                                   setDeleteDialog({
                                     open: true,
                                     userId: user.id,
                                     username: user.username,
                                     hasData: false,
+                                    isCorrupted: corrupted,
+                                    forceDelete: corrupted, // Auto-enable force delete for corrupted records
                                   });
                                 }}
                                 title="Delete user"
@@ -647,7 +678,7 @@ export default function UserManagementPage() {
                     {/* Header with Username and Status */}
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-semibold text-base">{user.username}</p>
+                        <p className="font-semibold text-base">{displayUsername(user.username)}</p>
                         <p className="text-sm text-muted-foreground">{user.email || "No email"}</p>
                       </div>
                       <Badge variant={user.isActive ? "default" : "secondary"}>
@@ -731,11 +762,14 @@ export default function UserManagementPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
+                              const corrupted = isCorruptedUsername(user.username);
                               setDeleteDialog({
                                 open: true,
                                 userId: user.id,
                                 username: user.username,
                                 hasData: false,
+                                isCorrupted: corrupted,
+                                forceDelete: corrupted, // Auto-enable force delete for corrupted records
                               });
                             }}
                             className="px-3"
@@ -762,24 +796,45 @@ export default function UserManagementPage() {
               </AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3">
-                  <p>
-                    Are you sure you want to delete the user <strong>{deleteDialog.username}</strong>?
-                  </p>
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
-                    <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                      ⚠️ This action is irreversible
-                    </p>
-                    <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5">
-                      <li className="list-disc">If the user has created delivery orders or reported issues, they will be deactivated instead</li>
-                      <li className="list-disc">If the user has no associated data, they will be permanently deleted</li>
-                      <li className="list-disc">The username will become available for future use</li>
-                    </ul>
-                  </div>
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      <strong>Alternative:</strong> Consider deactivating the user instead if you might need to restore access later.
-                    </p>
-                  </div>
+                  {deleteDialog.isCorrupted ? (
+                    <>
+                      <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-3">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                          🔴 Corrupted User Record Detected
+                        </p>
+                        <p className="text-sm text-red-700 dark:text-red-300">
+                          This user record appears to be corrupted with multiple deletion attempts.
+                          Username: <code className="text-xs bg-red-200 dark:bg-red-800 px-1 rounded break-all">{deleteDialog.username}</code>
+                        </p>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          ✅ <strong>Recommended:</strong> This record will be permanently deleted to clean up the database.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        Are you sure you want to delete the user <strong>{deleteDialog.username}</strong>?
+                      </p>
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 space-y-2">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                          ⚠️ This action is irreversible
+                        </p>
+                        <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-5">
+                          <li className="list-disc">If the user has created delivery orders or reported issues, they will be deactivated instead</li>
+                          <li className="list-disc">If the user has no associated data, they will be permanently deleted</li>
+                          <li className="list-disc">The username will become available for future use</li>
+                        </ul>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          <strong>Alternative:</strong> Consider deactivating the user instead if you might need to restore access later.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>

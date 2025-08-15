@@ -60,14 +60,29 @@ export async function DELETE(
       userToDelete.resolvedIssues.length > 0 ||
       userToDelete.workflowActions.length > 0;
 
-    if (hasData) {
+    // Check for force delete parameter
+    const { searchParams } = new URL(request.url);
+    const forceDelete = searchParams.get('force') === 'true';
+    
+    if (hasData && !forceDelete) {
       // Soft delete - deactivate the user instead of hard delete
+      // Only add deleted prefix if not already there
+      let newUsername = userToDelete.username;
+      if (!newUsername.startsWith('deleted_')) {
+        newUsername = `deleted_${Date.now()}_${userToDelete.username}`;
+      }
+      
+      let newEmail = userToDelete.email;
+      if (newEmail && !newEmail.startsWith('deleted_')) {
+        newEmail = `deleted_${Date.now()}_${userToDelete.email}`;
+      }
+      
       const deactivatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
           isActive: false,
-          username: `deleted_${userToDelete.username}_${Date.now()}`,
-          email: userToDelete.email ? `deleted_${Date.now()}_${userToDelete.email}` : null,
+          username: newUsername,
+          email: newEmail,
           password: null, // Clear password
           resetToken: null,
           resetTokenExpiry: null,
@@ -93,6 +108,14 @@ export async function DELETE(
       });
     } else {
       // Hard delete - completely remove the user
+      // This happens when:
+      // 1. User has no associated data
+      // 2. Force delete is requested (for cleaning up corrupted records)
+      
+      if (forceDelete && hasData) {
+        console.warn(`FORCE DELETE: User ${userToDelete.username} has associated data but force delete was requested`);
+      }
+      
       await prisma.user.delete({
         where: { id: userId },
       });
