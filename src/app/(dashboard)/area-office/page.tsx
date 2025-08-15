@@ -24,8 +24,13 @@ export default function AreaOfficeDashboard() {
 
   const fetchUserAndStats = async () => {
     try {
-      // Fetch area office specific stats
-      const statsRes = await fetch("/api/area-office/stats");
+      // Fetch area office specific stats with cache busting
+      const statsRes = await fetch(`/api/area-office/stats?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      });
       const statsData = await statsRes.json();
       setStats(statsData);
     } catch (error) {

@@ -12,6 +12,21 @@ const nextConfig: NextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
+  // Performance optimizations
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+  // Image optimization
+  images: {
+    domains: [],
+    formats: ['image/avif', 'image/webp'],
+  },
+  // Experimental features for better performance
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'framer-motion'],
+  },
 };
 
 export default nextConfig;

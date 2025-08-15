@@ -57,12 +57,19 @@ export async function GET(request: NextRequest) {
       do_ => do_.issues.length > 0
     ).length;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       totalCreated,
       pendingForward,
       forwarded,
       withIssues,
     });
+    
+    // Prevent caching
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('Stats error:', error);
     return NextResponse.json(
