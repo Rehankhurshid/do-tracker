@@ -47,15 +47,14 @@ export async function GET(request: NextRequest) {
       case 'PROJECT_OFFICE':
         // Project office can see all DOs at their stage and beyond
         whereConditions.status = {
-          in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
+          in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved', 'at_road_sale']
         };
         break;
       case 'CISF':
-        // CISF can see all DOs that need their approval or have been approved by them
-        whereConditions.OR = [
-          { status: { in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved'] } },
-          { cisfApproved: true }
-        ];
+        // CISF should see all orders at project office stage or beyond (but not at road sale)
+        whereConditions.status = {
+          in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved']
+        };
         break;
       case 'ROAD_SALE':
         // Road Sale can see all DOs at their stage

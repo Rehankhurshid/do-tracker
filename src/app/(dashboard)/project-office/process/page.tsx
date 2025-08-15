@@ -113,13 +113,8 @@ export default function ProjectOfficeProcessPage() {
       const response = await fetch("/api/delivery-orders");
       if (response.ok) {
         const data = await response.json();
-        // Filter for Project Office relevant orders
-        const relevantOrders = data.filter((order: any) => 
-          order.status === 'at_project_office' || 
-          order.status === 'received_at_project_office' ||
-          order.status === 'at_road_sale'
-        );
-        setDeliveryOrders(relevantOrders);
+        // API already filters based on PROJECT_OFFICE role - no need for client-side filtering
+        setDeliveryOrders(data);
       } else {
         toast({
           title: "Error",
@@ -399,11 +394,19 @@ export default function ProjectOfficeProcessPage() {
 
   const canForward = (order: any) => {
     const hasUnresolvedIssues = order.issues?.some((issue: any) => issue.status === "OPEN");
-    return order.status === "received_at_project_office" && !hasUnresolvedIssues;
+    // Can forward if:
+    // 1. Status is both_approved (both PO and CISF have approved)
+    // 2. No unresolved issues
+    return order.status === "both_approved" && !hasUnresolvedIssues;
   };
 
   const pendingReceipt = deliveryOrders.filter(order => order.status === "at_project_office");
-  const receivedOrders = deliveryOrders.filter(order => order.status === "received_at_project_office");
+  const receivedOrders = deliveryOrders.filter(order => 
+    order.status === "received_at_project_office" || 
+    order.status === "project_approved" || 
+    order.status === "cisf_approved" || 
+    order.status === "both_approved"
+  );
   const forwardedOrders = deliveryOrders.filter(order => order.status === "at_road_sale");
 
   const renderOrdersTable = (orders: any[], showReceiveButton: boolean = false) => {

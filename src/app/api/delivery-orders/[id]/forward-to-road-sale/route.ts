@@ -45,8 +45,8 @@ export async function POST(
       );
     }
 
-    // Check if both approvals are complete
-    if (!deliveryOrder.projectApproved || !deliveryOrder.cisfApproved) {
+    // Check if both approvals are complete (status should be both_approved)
+    if (deliveryOrder.status !== 'both_approved') {
       return NextResponse.json(
         { error: "Both Project Office and CISF must approve before forwarding to Road Sale" },
         { status: 400 }

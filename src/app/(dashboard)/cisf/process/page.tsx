@@ -14,7 +14,8 @@ import {
   Filter,
   Eye,
   MessageSquare,
-  CheckSquare
+  CheckSquare,
+  Truck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,19 +93,8 @@ export default function CISFProcessPage() {
       const response = await fetch("/api/delivery-orders");
       if (response.ok) {
         const data = await response.json();
-        // Filter for orders that CISF can see
-        // CISF should see:
-        // 1. Orders awaiting their approval (at project office stages)
-        // 2. Orders they have already approved
-        const cisfOrders = data.filter((order: any) => 
-          order.status === 'at_project_office' || 
-          order.status === 'received_at_project_office' ||
-          order.status === 'project_approved' ||
-          order.status === 'cisf_approved' ||
-          order.status === 'both_approved' ||
-          order.cisfApproved === true
-        );
-        setDeliveryOrders(cisfOrders);
+        // API already filters based on CISF role - no need for client-side filtering
+        setDeliveryOrders(data);
       }
     } catch (error) {
       toast({
