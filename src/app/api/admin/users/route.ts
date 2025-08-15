@@ -103,9 +103,29 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Username already exists' },
-        { status: 400 }
+        { 
+          error: `Username "${username}" is already taken. Please choose a different username.`,
+          field: 'username'
+        },
+        { status: 409 }
       );
+    }
+    
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingEmail = await prisma.user.findUnique({
+        where: { email },
+      });
+      
+      if (existingEmail) {
+        return NextResponse.json(
+          { 
+            error: `Email "${email}" is already registered to another user.`,
+            field: 'email'
+          },
+          { status: 409 }
+        );
+      }
     }
 
     let userData: any = {
@@ -175,10 +195,33 @@ export async function POST(request: NextRequest) {
         ? `Invitation sent to ${email}. User can set password using the link sent to their email.`
         : 'User created successfully with the provided password.',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create user error:', error);
+    
+    // Handle Prisma unique constraint errors
+    if (error?.code === 'P2002') {
+      const field = error?.meta?.target?.[0];
+      if (field === 'username') {
+        return NextResponse.json(
+          { 
+            error: 'Username is already taken',
+            field: 'username'
+          },
+          { status: 409 }
+        );
+      } else if (field === 'email') {
+        return NextResponse.json(
+          { 
+            error: 'Email is already registered',
+            field: 'email'
+          },
+          { status: 409 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create user. Please try again.' },
       { status: 500 }
     );
   }

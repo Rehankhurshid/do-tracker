@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, UserCheck, UserX, Search, Mail, Key, RefreshCw, AlertTriangle, Shield } from "lucide-react";
+import { Plus, Edit, Trash2, UserCheck, UserX, Search, Mail, Key, RefreshCw, AlertTriangle, Shield, Loader2, User, CheckCircle, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,12 @@ export default function UserManagementPage() {
     hasData: false,
   });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [formErrors, setFormErrors] = useState<{
+    username?: string;
+    email?: string;
+    general?: string;
+  }>({});
 
   useEffect(() => {
     fetchUserAndData();
@@ -84,6 +90,10 @@ export default function UserManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setFormErrors({});
+    setIsCreatingUser(true);
 
     try {
       const url = editingUser
@@ -98,28 +108,68 @@ export default function UserManagementPage() {
       });
 
       if (response.ok) {
+        const userData = await response.json();
+        
+        // Rich success toast
         toast({
-          title: "Success",
-          description: editingUser ? "User updated successfully" : "User created successfully",
+          title: editingUser ? "✅ User Updated" : "✅ User Created Successfully",
+          description: (
+            <div className="space-y-1">
+              <p className="font-medium">{userData.username}</p>
+              <p className="text-sm text-muted-foreground">
+                Role: {userData.role.replace('_', ' ')}
+              </p>
+              {formData.sendInvite && formData.email && (
+                <p className="text-sm text-muted-foreground">
+                  📧 Invitation sent to {formData.email}
+                </p>
+              )}
+            </div>
+          ) as any,
         });
+        
         setDialogOpen(false);
         setEditingUser(null);
         setFormData({ username: "", email: "", password: "", role: "AREA_OFFICE", sendInvite: false });
+        setFormErrors({});
         fetchUserAndData();
       } else {
         const error = await response.json();
+        
+        // Handle specific error cases
+        if (response.status === 409) {
+          // Conflict - duplicate username or email
+          if (error.field === 'username') {
+            setFormErrors({ username: error.error || "Username already exists" });
+          } else if (error.field === 'email') {
+            setFormErrors({ email: error.error || "Email already in use" });
+          } else {
+            setFormErrors({ general: error.error || "User already exists" });
+          }
+        } else if (response.status === 400) {
+          // Validation error
+          setFormErrors({ general: error.error || "Invalid input data" });
+        } else {
+          // General error
+          setFormErrors({ general: error.error || "Failed to save user" });
+        }
+        
+        // Error toast
         toast({
-          title: "Error",
+          title: "❌ Error Creating User",
           description: error.error || "Failed to save user",
           variant: "destructive",
         });
       }
     } catch (error) {
+      setFormErrors({ general: "Network error. Please try again." });
       toast({
-        title: "Error",
-        description: "Something went wrong",
+        title: "❌ Network Error",
+        description: "Unable to connect to server",
         variant: "destructive",
       });
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -273,7 +323,19 @@ export default function UserManagementPage() {
                 Manage system users and their roles
               </p>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog 
+              open={dialogOpen} 
+              onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) {
+                  // Reset form when dialog closes
+                  setEditingUser(null);
+                  setFormData({ username: "", email: "", password: "", role: "AREA_OFFICE", sendInvite: false });
+                  setFormErrors({});
+                  setIsCreatingUser(false);
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingUser(null);
@@ -292,24 +354,57 @@ export default function UserManagementPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
+                    {/* General Error Alert */}
+                    {formErrors.general && (
+                      <Alert variant="destructive">
+                        <XCircle className="h-4 w-4" />
+                        <AlertDescription>{formErrors.general}</AlertDescription>
+                      </Alert>
+                    )}
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
+                      <Label htmlFor="username" className={formErrors.username ? "text-destructive" : ""}>Username</Label>
                       <Input
                         id="username"
                         value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, username: e.target.value });
+                          if (formErrors.username) {
+                            setFormErrors({ ...formErrors, username: undefined });
+                          }
+                        }}
                         required
-                        disabled={editingUser}
+                        disabled={editingUser || isCreatingUser}
+                        className={formErrors.username ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
+                      {formErrors.username && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <XCircle className="h-3 w-3" />
+                          {formErrors.username}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className={formErrors.email ? "text-destructive" : ""}>Email</Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (formErrors.email) {
+                            setFormErrors({ ...formErrors, email: undefined });
+                          }
+                        }}
+                        disabled={isCreatingUser}
+                        className={formErrors.email ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
+                      {formErrors.email && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <XCircle className="h-3 w-3" />
+                          {formErrors.email}
+                        </p>
+                      )}
                     </div>
                     {!editingUser && (
                       <div className="space-y-4">
@@ -334,6 +429,7 @@ export default function UserManagementPage() {
                               value={formData.password}
                               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                               required={!formData.sendInvite}
+                              disabled={isCreatingUser}
                             />
                             <p className="text-xs text-muted-foreground">
                               User can login immediately with this password
@@ -361,6 +457,7 @@ export default function UserManagementPage() {
                       <Label htmlFor="role">Role</Label>
                       <select
                         id="role"
+                        disabled={isCreatingUser}
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -374,8 +471,40 @@ export default function UserManagementPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit">
-                      {editingUser ? "Update" : "Create"}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        setDialogOpen(false);
+                        setEditingUser(null);
+                        setFormData({ username: "", email: "", password: "", role: "AREA_OFFICE", sendInvite: false });
+                        setFormErrors({});
+                      }}
+                      disabled={isCreatingUser}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isCreatingUser}>
+                      {isCreatingUser ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {editingUser ? "Updating..." : "Creating..."}
+                        </>
+                      ) : (
+                        <>
+                          {editingUser ? (
+                            <>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Update User
+                            </>
+                          ) : (
+                            <>
+                              <User className="mr-2 h-4 w-4" />
+                              Create User
+                            </>
+                          )}
+                        </>
+                      )}
                     </Button>
                   </DialogFooter>
                 </form>
