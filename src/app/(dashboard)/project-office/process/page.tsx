@@ -320,6 +320,9 @@ export default function ProjectOfficeProcessPage() {
     const statusConfig: any = {
       at_project_office: { label: "Pending Receipt", variant: "secondary" },
       received_at_project_office: { label: "Received", variant: "default" },
+      project_approved: { label: "PO Approved", variant: "default" },
+      cisf_approved: { label: "CISF Approved", variant: "default" },
+      both_approved: { label: "Both Approved", variant: "success" },
       at_road_sale: { label: "Forwarded to Road Sale", variant: "success" },
     };
 
@@ -660,6 +663,25 @@ export default function ProjectOfficeProcessPage() {
                               Receive
                             </>
                           )}
+                        </Button>
+                      )}
+                      
+                      {(order.status === "received_at_project_office" || order.status === "cisf_approved") && !order.projectApproved && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setApprovalDialog({
+                              open: true,
+                              orderId: order.id,
+                              orderNumber: order.doNumber,
+                              notes: "",
+                            });
+                          }}
+                          disabled={isApproving}
+                        >
+                          <FileCheck className="h-4 w-4 mr-1" />
+                          Approve
                         </Button>
                       )}
                       
