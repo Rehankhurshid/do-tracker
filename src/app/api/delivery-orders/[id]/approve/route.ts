@@ -101,13 +101,36 @@ export async function POST(
       },
     });
 
-    // Don't auto-forward to Road Sale - let it be a manual action
-    // This keeps the DO visible to both CISF and Project Office after both approve
+    // Auto-forward to Road Sale if both have approved
+    if (updatedOrder.status === "both_approved") {
+      // Automatically forward to Road Sale
+      const finalOrder = await prisma.deliveryOrder.update({
+        where: { id },
+        data: {
+          status: "at_road_sale",
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create workflow history for auto-forward
+      await prisma.workflowHistory.create({
+        data: {
+          deliveryOrderId: id,
+          fromStatus: "both_approved",
+          toStatus: "at_road_sale",
+          actionById: user.userId,
+          notes: "Automatically forwarded to Road Sale after dual approval",
+        },
+      });
+
+      return NextResponse.json({
+        message: "Delivery order approved by both departments and automatically forwarded to Road Sale",
+        deliveryOrder: finalOrder,
+      });
+    }
     
     return NextResponse.json({
-      message: updatedOrder.status === "both_approved" 
-        ? "Delivery order approved by both departments. Ready to forward to Road Sale."
-        : "Delivery order approved successfully",
+      message: "Delivery order approved successfully",
       deliveryOrder: updatedOrder,
     });
   } catch (error: any) {

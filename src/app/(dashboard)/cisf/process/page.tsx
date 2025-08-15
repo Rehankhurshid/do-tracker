@@ -329,47 +329,6 @@ export default function CISFProcessPage() {
                               </Badge>
                             )}
 
-                            {/* Show forward button if both approved */}
-                            {order.status === "both_approved" && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="w-full"
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch(`/api/delivery-orders/${order.id}/forward-to-road-sale`, {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ notes: "Forwarded to Road Sale after dual approval" }),
-                                    });
-                                    
-                                    if (response.ok) {
-                                      toast({
-                                        title: "✅ Forwarded to Road Sale",
-                                        description: `DO #${order.doNumber} has been forwarded to Road Sale`,
-                                      });
-                                      fetchDeliveryOrders();
-                                    } else {
-                                      const error = await response.json();
-                                      toast({
-                                        title: "Error",
-                                        description: error.error || "Failed to forward order",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  } catch (error) {
-                                    toast({
-                                      title: "Error",
-                                      description: "Failed to forward order",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                }}
-                              >
-                                <Truck className="h-4 w-4 mr-1" />
-                                Forward to Road Sale
-                              </Button>
-                            )}
                             
                             {!order.cisfApproved && (
                               <div className="flex gap-2 pt-2">

@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
         };
         break;
       case 'CISF':
-        // CISF should see all orders at project office stage or beyond (but not at road sale)
+        // CISF should see all orders at project office stage or beyond
         whereConditions.status = {
-          in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved']
+          in: ['at_project_office', 'received_at_project_office', 'project_approved', 'cisf_approved', 'both_approved', 'at_road_sale']
         };
         break;
       case 'ROAD_SALE':

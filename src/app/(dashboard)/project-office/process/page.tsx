@@ -60,7 +60,6 @@ export default function ProjectOfficeProcessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
   const [receivingOrderId, setReceivingOrderId] = useState<string | null>(null);
-  const [forwardingOrderId, setForwardingOrderId] = useState<string | null>(null);
   
   // Issue management states
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -94,15 +93,6 @@ export default function ProjectOfficeProcessPage() {
     notes: string;
   }>({ open: false, orderId: "", orderNumber: "", notes: "" });
   const [isApproving, setIsApproving] = useState(false);
-
-  // Forward confirmation dialog
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    orderId: string | null;
-    orderNumber: string;
-    partyName: string;
-  }>({ open: false, orderId: null, orderNumber: "", partyName: "" });
-  const [forwardNote, setForwardNote] = useState("");
 
   useEffect(() => {
     fetchDeliveryOrders();
@@ -166,48 +156,6 @@ export default function ProjectOfficeProcessPage() {
     }
   };
 
-  const forwardToRoadSale = async () => {
-    const orderId = confirmDialog.orderId;
-    if (!orderId) return;
-
-    setForwardingOrderId(orderId);
-    try {
-      const response = await fetch(`/api/delivery-orders/${orderId}/forward`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          toStatus: "at_road_sale",
-          notes: forwardNote.trim() || "Forwarded to Road Sale"
-        }),
-      });
-
-      if (response.ok) {
-        setConfirmDialog({ open: false, orderId: null, orderNumber: "", partyName: "" });
-        setForwardNote("");
-        setActiveTab("forwarded");
-        toast({
-          title: "✅ Success",
-          description: "Delivery order forwarded to Road Sale",
-        });
-        await fetchDeliveryOrders();
-      } else {
-        const data = await response.json();
-        toast({
-          title: "❌ Error",
-          description: data.error || "Failed to forward delivery order",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Error",
-        description: "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setForwardingOrderId(null);
-    }
-  };
 
   const toggleOrderExpansion = (orderId: string) => {
     setExpandedOrders(prev => {
@@ -392,13 +340,6 @@ export default function ProjectOfficeProcessPage() {
     return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.className}`}>{config.label}</span>;
   };
 
-  const canForward = (order: any) => {
-    const hasUnresolvedIssues = order.issues?.some((issue: any) => issue.status === "OPEN");
-    // Can forward if:
-    // 1. Status is both_approved (both PO and CISF have approved)
-    // 2. No unresolved issues
-    return order.status === "both_approved" && !hasUnresolvedIssues;
-  };
 
   const pendingReceipt = deliveryOrders.filter(order => order.status === "at_project_office");
   const receivedOrders = deliveryOrders.filter(order => 
@@ -631,34 +572,6 @@ export default function ProjectOfficeProcessPage() {
                         <Plus className="h-4 w-4" />
                       </Button>
                       
-                      {canForward(order) && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => {
-                            setConfirmDialog({
-                              open: true,
-                              orderId: order.id,
-                              orderNumber: order.doNumber,
-                              partyName: order.party?.name || "",
-                            });
-                          }}
-                          disabled={forwardingOrderId === order.id}
-                          className="flex-1"
-                        >
-                          {forwardingOrderId === order.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              Forwarding
-                            </>
-                          ) : (
-                            <>
-                              <Truck className="h-4 w-4 mr-1" />
-                              Forward
-                            </>
-                          )}
-                        </Button>
-                      )}
                     </>
                   )}
                 </div>
@@ -769,35 +682,6 @@ export default function ProjectOfficeProcessPage() {
                         </Button>
                       )}
                       
-                      {canForward(order) && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => {
-                            setConfirmDialog({
-                              open: true,
-                              orderId: order.id,
-                              orderNumber: order.doNumber,
-                              partyName: order.party?.name || "",
-                            });
-                          }}
-                          disabled={forwardingOrderId === order.id}
-                          className="group"
-                        >
-                          {forwardingOrderId === order.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              Forwarding...
-                            </>
-                          ) : (
-                            <>
-                              <Truck className="h-4 w-4 mr-1 group-hover:translate-x-0.5 transition-transform" />
-                              Forward
-                              <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
-                            </>
-                          )}
-                        </Button>
-                      )}
                     </div>
                   </TableCell>
                 </motion.tr>
@@ -950,79 +834,6 @@ export default function ProjectOfficeProcessPage() {
         </Card>
       </motion.div>
 
-      {/* Forward Confirmation Dialog */}
-      <Dialog open={confirmDialog.open} onOpenChange={(open) => {
-        if (!forwardingOrderId) {
-          setConfirmDialog({ open: false, orderId: null, orderNumber: "", partyName: "" });
-          setForwardNote("");
-        }
-      }}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="h-5 w-5 text-primary" />
-              Forward to Road Sale
-            </DialogTitle>
-            <DialogDescription>
-              Both Project Office and CISF have approved this order. Are you sure you want to forward it to Road Sale?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 my-4">
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">DO Number:</span>
-                <span className="font-medium">{confirmDialog.orderNumber}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Party:</span>
-                <span className="font-medium">{confirmDialog.partyName}</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="forward-note">Add Note (Optional)</Label>
-              <Textarea
-                id="forward-note"
-                placeholder="Add any notes or instructions for Road Sale..."
-                value={forwardNote}
-                onChange={(e) => setForwardNote(e.target.value)}
-                className="resize-none"
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setConfirmDialog({ open: false, orderId: null, orderNumber: "", partyName: "" });
-                setForwardNote("");
-              }}
-              disabled={!!forwardingOrderId}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={forwardToRoadSale}
-              disabled={!!forwardingOrderId}
-            >
-              {forwardingOrderId ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Forwarding...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Confirm Forward
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Report Issue Dialog */}
       <Dialog open={reportIssueDialog.open} onOpenChange={(open) => {
