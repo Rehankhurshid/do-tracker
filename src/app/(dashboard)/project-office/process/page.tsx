@@ -85,6 +85,15 @@ export default function ProjectOfficeProcessPage() {
     open: boolean;
     order: any | null;
   }>({ open: false, order: null });
+  
+  // Approval dialog state
+  const [approvalDialog, setApprovalDialog] = useState<{
+    open: boolean;
+    orderId: string;
+    orderNumber: string;
+    notes: string;
+  }>({ open: false, orderId: "", orderNumber: "", notes: "" });
+  const [isApproving, setIsApproving] = useState(false);
 
   // Forward confirmation dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -265,6 +274,59 @@ export default function ProjectOfficeProcessPage() {
     }
   };
 
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      const response = await fetch(`/api/delivery-orders/${approvalDialog.orderId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "PROJECT_OFFICE",
+          notes: approvalDialog.notes,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "✅ Order Approved",
+          description: `DO #${approvalDialog.orderNumber} has been approved by Project Office`,
+        });
+        
+        // Update local state immediately
+        setDeliveryOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === approvalDialog.orderId 
+              ? { ...order, projectApproved: true, status: result.deliveryOrder?.status || order.status }
+              : order
+          )
+        );
+        
+        setApprovalDialog({ open: false, orderId: "", orderNumber: "", notes: "" });
+        
+        // Fetch fresh data
+        setTimeout(() => {
+          fetchDeliveryOrders();
+        }, 500);
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to approve order",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   const resolveIssue = async () => {
     if (!resolveIssueDialog.issueId || !resolveIssueDialog.resolution.trim()) {
       toast({
@@ -377,7 +439,23 @@ export default function ProjectOfficeProcessPage() {
                     <p className="font-semibold text-base">{order.doNumber}</p>
                     <p className="text-sm text-muted-foreground">{order.party?.name}</p>
                   </div>
-                  {getStatusBadge(order.status)}
+                  <div className="flex flex-col gap-1 items-end">
+                    {getStatusBadge(order.status)}
+                    <div className="flex gap-1">
+                      {order.projectApproved && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          PO
+                        </Badge>
+                      )}
+                      {order.cisfApproved && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          CISF
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Details */}
@@ -508,6 +586,26 @@ export default function ProjectOfficeProcessPage() {
                           Receive
                         </>
                       )}
+                    </Button>
+                  )}
+                  
+                  {order.status === "received_at_project_office" && !order.projectApproved && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        setApprovalDialog({
+                          open: true,
+                          orderId: order.id,
+                          orderNumber: order.doNumber,
+                          notes: "",
+                        });
+                      }}
+                      disabled={isApproving}
+                      className="flex-1"
+                    >
+                      <FileCheck className="h-4 w-4 mr-1" />
+                      Approve
                     </Button>
                   )}
                   
@@ -1211,6 +1309,52 @@ export default function ProjectOfficeProcessPage() {
               onClick={() => setViewDODialog({ open: false, order: null })}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approval Dialog */}
+      <Dialog open={approvalDialog.open} onOpenChange={(open) => !isApproving && setApprovalDialog({ ...approvalDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Delivery Order</DialogTitle>
+            <DialogDescription>
+              Approve DO #{approvalDialog.orderNumber} for Project Office
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="approval-notes">Approval Notes (Optional)</Label>
+              <Textarea
+                id="approval-notes"
+                placeholder="Add any approval notes..."
+                value={approvalDialog.notes}
+                onChange={(e) => setApprovalDialog({ ...approvalDialog, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setApprovalDialog({ open: false, orderId: "", orderNumber: "", notes: "" })} 
+              disabled={isApproving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleApprove} disabled={isApproving}>
+              {isApproving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Approve Order
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -170,6 +170,39 @@ export default function ConsumerPortal() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Approval Status */}
+                  <div className="flex gap-2 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Project Office</p>
+                      {searchResult.projectApproved ? (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">Approved</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-yellow-600">
+                          <Clock className="h-4 w-4" />
+                          <span className="text-sm font-medium">Pending</span>
+                        </div>
+                      )}
+                    </div>
+                    <Separator orientation="vertical" className="h-auto" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">CISF Security</p>
+                      {searchResult.cisfApproved ? (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">Approved</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-yellow-600">
+                          <Clock className="h-4 w-4" />
+                          <span className="text-sm font-medium">Pending</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Order Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">

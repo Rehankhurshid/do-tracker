@@ -309,7 +309,23 @@ export default function CISFProcessPage() {
                                 <p className="font-semibold">DO #{order.doNumber}</p>
                                 <p className="text-sm text-muted-foreground">{order.party?.name}</p>
                               </div>
-                              {getStatusBadge(order)}
+                              <div className="flex flex-col gap-1 items-end">
+                                {getStatusBadge(order)}
+                                <div className="flex gap-1">
+                                  {order.projectApproved && (
+                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      PO
+                                    </Badge>
+                                  )}
+                                  {order.cisfApproved && (
+                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      CISF
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                             
                             <div className="text-sm space-y-1">
