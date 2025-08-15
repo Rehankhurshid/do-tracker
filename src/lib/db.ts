@@ -13,8 +13,8 @@ const prismaClientSingleton = () => {
         url: process.env.DATABASE_URL,
       },
     },
-    // Reduce connection timeout for faster failures
-    // log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    // Enable logging in production to debug connection issues
+    log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['query', 'error', 'warn'],
   })
 }
 
