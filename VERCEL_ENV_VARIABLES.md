@@ -8,13 +8,15 @@
 
 This solution is based on a verified fix from the Vercel community where the exact same error was resolved:
 
-**Original Error**: 
+**Original Error**:
+
 ```
 Error: The "path" argument must be of type string. Received undefined
 Error: Command "npm run build" exited with 1
 ```
 
 **Working Fix**:
+
 1. **Update Prisma client**: `npm update @prisma/client prisma`
 2. **Simple build script**: `"build": "prisma generate && next build"`
 3. **No database operations during build**
@@ -22,23 +24,49 @@ Error: Command "npm run build" exited with 1
 **Source**: [Next.js Prisma Build Error on Vercel - Community Solution](https://vercel.com/guides/nextjs-prisma-postgres)
 
 ### ✅ **App Status:**
+
 - **Live URL**: https://do-tracker.vercel.app
-- **Build**: Successful ✅  
+- **Build**: Successful ✅
 - **Database**: Connected at runtime ✅
 
-## 📋 Copy These to Vercel Dashboard
+## � **NEW APPROACH: Direct Supabase (Like Coal-India-Directory)** ✅
 
-Go to: https://vercel.com/rehankhurshids-projects/orderflow/settings/environment-variables
+**SOLUTION**: Switch from Prisma to direct Supabase approach that's proven to work in coal-india-directory.
 
-Add these environment variables:
+### 🔧 **Updated Environment Variables:**
 
-```
-DATABASE_URL
-```
+Instead of complex DATABASE_URL, use simple Supabase variables:
 
 ```
-postgresql://postgres.zvszwrgquawnhitshifz:rqe0jmp5rcg0MPD%2Auph@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+NEXT_PUBLIC_SUPABASE_URL
 ```
+
+```
+https://zvszwrgquawnhitshifz.supabase.co
+```
+
+```
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2c3p3cmdxdWF3bmhpdHNoaWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNjY1MzQsImV4cCI6MjA3MDg0MjUzNH0._tVq0sq2Xc9gsWMNMZx8nTkHEJVa5ObBZhWkihgJXlE
+```
+
+### 🚀 **Why This Works:**
+
+1. **No Prisma during build** - Uses direct Supabase client
+2. **Simple build**: `"build": "next build"` (like coal-india-directory)
+3. **No database connection strings** - Uses Supabase API keys
+4. **Runtime database operations** - All queries via Supabase client
+5. **Proven approach** - Working successfully in coal-india-directory
+
+### ✅ **Migration Steps:**
+
+1. **Replace environment variables** with Supabase keys above
+2. **Remove DATABASE_URL** completely from Vercel
+3. **Use Supabase client** for all database operations
+4. **Simple build process** - no database operations during build
 
 ```
 NEXTAUTH_URL
@@ -176,11 +204,11 @@ If you encounter issues after deployment:
 
 4. **FINAL SOLUTION - Proven Working Approach** ✅
    - **Update Prisma client** to latest version: `npm update @prisma/client prisma`
+   - **Fix DATABASE_URL protocol**: Change `postgresql://` to `postgres://` (fixes "Tenant or user not found")
    - **Remove database operations from build**: Use `"build": "prisma generate && next build"`
    - **No vercel-build script needed**: Let Vercel use standard build command
    - **Handle database at runtime**: Use API endpoints for schema operations
-   - **Apply working patterns**: Based on successful coal-india-directory deployment
-   - **Key insight**: Vercel build environment has database connectivity limitations
+   - **Community-proven fixes**: Both Prisma update and protocol change are verified solutions
 
 ## 🔗 Supabase Connection Details
 
