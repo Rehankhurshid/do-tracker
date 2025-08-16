@@ -19,14 +19,6 @@ postgresql://postgres.zvszwrgquawnhitshifz:rqe0jmp5rcg0MPD%2Auph@aws-0-ap-southe
 ```
 
 ```
-DIRECT_URL
-```
-
-```
-postgresql://postgres:rqe0jmp5rcg0MPD%2Auph@db.zvszwrgquawnhitshifz.supabase.co:5432/postgres?sslmode=require
-```
-
-```
 NEXTAUTH_URL
 ```
 
@@ -77,7 +69,7 @@ Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
 3. **Initialize Database** (After successful deployment)
 
    ```bash
-   # Schema is automatically applied during build via prisma migrate deploy
+   # Schema is automatically applied during build via prisma db push
 
    # Seed with initial users (POST request to your deployed app)
    curl -X POST https://do-tracker.vercel.app/api/seed \
@@ -123,15 +115,15 @@ If you encounter issues after deployment:
    - Look for any database connection errors
 
 3. **Verify Environment Variables**
-   - Ensure all 5 variables are set in Vercel
+   - Ensure all 4 variables are set in Vercel
    - Check for typos in connection strings
    - Verify password is URL-encoded (`*` becomes `%2A`)
 
 4. **Common Supabase-Vercel Issues**
    - Ensure DATABASE_URL uses port `6543` (not 5432) for pooled connection
    - Confirm `?pgbouncer=true&sslmode=require` is in DATABASE_URL
-   - DIRECT_URL should use port `5432` for migrations
    - Check that Supabase project is not paused in dashboard
+   - Vercel build uses `prisma db push` (not migrate) to work with pooled connections
 
 ## 🔗 Supabase Connection Details
 
