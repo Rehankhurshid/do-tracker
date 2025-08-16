@@ -69,7 +69,8 @@ Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
 3. **Initialize Database** (After successful deployment)
 
    ```bash
-   # Schema is automatically applied during build via prisma db push
+   # Schema is automatically applied during build via vercel-build script
+   # The vercel-build script runs: prisma generate && prisma db push && next build
 
    # Seed with initial users (POST request to your deployed app)
    curl -X POST https://do-tracker.vercel.app/api/seed \
@@ -123,7 +124,8 @@ If you encounter issues after deployment:
    - Ensure DATABASE_URL uses port `6543` (not 5432) for pooled connection
    - Confirm `?pgbouncer=true&sslmode=require` is in DATABASE_URL
    - Check that Supabase project is not paused in dashboard
-   - Vercel build uses `prisma db push` (not migrate) to work with pooled connections
+   - Uses `vercel-build` script: `"prisma generate && prisma db push && next build"`
+   - Alternative build script: `"prisma generate && prisma migrate deploy && next build"`
 
 ## 🔗 Supabase Connection Details
 
