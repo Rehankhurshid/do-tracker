@@ -60,11 +60,18 @@ Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
    - Add each variable above (copy-paste exactly)
    - Select all environments (Production, Preview, Development)
 
-2. **Deploy Again**
+2. **Deploy Again & Clear Cache**
 
    ```bash
-   vercel --prod
+   # Clear Vercel cache and redeploy
+   vercel --prod --force
    ```
+
+   **⚠️ IMPORTANT**: If still getting `prisma db push` errors:
+   1. Go to Vercel Dashboard → Project Settings → General
+   2. Check if there's a custom "Build Command" set
+   3. If yes, **remove it** or set it to: `prisma generate && next build`
+   4. Redeploy after clearing the custom command
 
 3. **Initialize Database** (After successful deployment)
 
