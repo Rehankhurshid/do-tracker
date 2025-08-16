@@ -69,10 +69,16 @@ Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
 3. **Initialize Database** (After successful deployment)
 
    ```bash
-   # Schema is automatically applied during build via vercel-build script
-   # The vercel-build script runs: prisma generate && prisma db push && next build
+   # Verify environment variables are loaded correctly
+   curl https://do-tracker.vercel.app/api/health
 
-   # Seed with initial users (POST request to your deployed app)
+   # Should return: {"ok": true, "db": "timestamp"}
+   # If not, check Vercel environment variable configuration
+
+   # Apply database schema at runtime (if needed)
+   curl -X POST https://do-tracker.vercel.app/api/debug/migrate
+
+   # Seed with initial users
    curl -X POST https://do-tracker.vercel.app/api/seed \
      -H "Content-Type: application/json" \
      -d '{"secret":"Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss="}'
@@ -95,9 +101,28 @@ Road Sale:      road_user / road123
 
 **⚠️ IMPORTANT: Change these passwords immediately after first login!**
 
-## 🎉 You're All Set!
+## � **Prisma Best Practices for Vercel**
 
-Your Supabase database is configured and ready. Just add these environment variables to Vercel and deploy!
+### ✅ **Current Implementation**
+
+- **Consistent Client Generation**: `prisma generate` runs before build
+- **Explicit Strategy**: Build-time generation ensures schema compatibility
+- **Environment Separation**: Build vs Runtime database handling
+
+### 📚 **Additional Recommendations**
+
+1. **Always run `prisma generate` before build** ✅ (Already implemented)
+2. **Use explicit environment variable validation**
+3. **Consider `prisma-multi-tenant` for complex deployments**
+4. **Monitor Prisma community forums for deployment patterns**
+5. **Test DATABASE_URL format thoroughly before deployment**
+
+### 🔧 **Environment Variable Best Practices**
+
+- **Explicit Loading**: Verify all env vars are available at runtime
+- **URL Encoding**: Always encode special characters (`*` → `%2A`)
+- **Connection Testing**: Use health endpoints to verify connectivity
+- **Fallback Strategies**: Have backup connection methods ready
 
 ## 🔍 Debugging Steps
 
@@ -120,12 +145,14 @@ If you encounter issues after deployment:
    - Check for typos in connection strings
    - Verify password is URL-encoded (`*` becomes `%2A`)
 
-4. **Common Supabase-Vercel Issues**
-   - **SOLUTION**: Skip database operations during build, handle at runtime
-   - Modified vercel-build script: `"prisma generate && next build"` (no db push)
-   - Database schema will be applied at runtime instead of build time
-   - Use the simplified pooler connection for runtime operations
-   - **Vercel Build Issue**: Build environment has limited database access
+4. **Common Supabase-Vercel Issues & Solutions**
+   - **Build Strategy**: Skip database operations during build (`prisma generate && next build`)
+   - **Runtime Handling**: Database schema operations handled at runtime
+   - **Consistent Generation**: Always run `prisma generate` before build
+   - **Environment Validation**: Verify DATABASE_URL format and accessibility
+   - **Connection Pooling**: Use pooler for serverless compatibility
+   - **Multi-tenancy**: Consider `prisma-multi-tenant` for complex deployments
+   - **Documentation**: Reference Prisma docs and community forums for troubleshooting
 
 ## 🔗 Supabase Connection Details
 
