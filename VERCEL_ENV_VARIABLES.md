@@ -15,7 +15,7 @@ DATABASE_URL
 ```
 
 ```
-postgresql://postgres.zvszwrgquawnhitshifz:rqe0jmp5rcg0MPD%2Auph@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require
+postgresql://postgres.zvszwrgquawnhitshifz:rqe0jmp5rcg0MPD%2Auph@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
 
 ```
@@ -121,11 +121,11 @@ If you encounter issues after deployment:
    - Verify password is URL-encoded (`*` becomes `%2A`)
 
 4. **Common Supabase-Vercel Issues**
-   - Ensure DATABASE_URL uses port `6543` (not 5432) for pooled connection
-   - Confirm `?pgbouncer=true&sslmode=require` is in DATABASE_URL
-   - Check that Supabase project is not paused in dashboard
-   - Uses `vercel-build` script: `"prisma generate && prisma db push && next build"`
-   - Alternative build script: `"prisma generate && prisma migrate deploy && next build"`
+   - **SOLUTION**: Skip database operations during build, handle at runtime
+   - Modified vercel-build script: `"prisma generate && next build"` (no db push)
+   - Database schema will be applied at runtime instead of build time
+   - Use the simplified pooler connection for runtime operations
+   - **Vercel Build Issue**: Build environment has limited database access
 
 ## 🔗 Supabase Connection Details
 
