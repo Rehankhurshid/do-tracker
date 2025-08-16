@@ -13,6 +13,7 @@ Add these environment variables:
 ```
 DATABASE_URL
 ```
+
 ```
 postgresql://postgres.zvszwrgquawnhitshifz:rqe0jmp5rcg0MPD%2Auph@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require
 ```
@@ -20,6 +21,7 @@ postgresql://postgres.zvszwrgquawnhitshifz:rqe0jmp5rcg0MPD%2Auph@aws-0-ap-southe
 ```
 DIRECT_URL
 ```
+
 ```
 postgresql://postgres:rqe0jmp5rcg0MPD%2Auph@db.zvszwrgquawnhitshifz.supabase.co:5432/postgres?sslmode=require
 ```
@@ -27,13 +29,15 @@ postgresql://postgres:rqe0jmp5rcg0MPD%2Auph@db.zvszwrgquawnhitshifz.supabase.co:
 ```
 NEXTAUTH_URL
 ```
+
 ```
-https://orderflow.vercel.app
+https://do-tracker.vercel.app
 ```
 
 ```
 NEXTAUTH_SECRET
 ```
+
 ```
 uoSNKy1evZ0pHxRpwwvc04dphdNocVRqpjjAK2Cn6HI=
 ```
@@ -41,6 +45,7 @@ uoSNKy1evZ0pHxRpwwvc04dphdNocVRqpjjAK2Cn6HI=
 ```
 JWT_SECRET
 ```
+
 ```
 Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
 ```
@@ -64,16 +69,18 @@ Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
    - Select all environments (Production, Preview, Development)
 
 2. **Deploy Again**
+
    ```bash
    vercel --prod
    ```
 
 3. **Initialize Database** (After successful deployment)
+
    ```bash
    # Schema is automatically applied during build via prisma db push
-   
+
    # Seed with initial users (POST request to your deployed app)
-   curl -X POST https://orderflow.vercel.app/api/seed \
+   curl -X POST https://do-tracker.vercel.app/api/seed \
      -H "Content-Type: application/json" \
      -d '{"secret":"Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss="}'
    ```
@@ -81,8 +88,8 @@ Ziqt6maze3C/Ju0RajDN+ueKLX2y1OPE8RfDy7Joqss=
 ## ✅ Verification
 
 After deployment, your app will be available at:
-- https://orderflow.vercel.app
-- Or check your custom domain if you set one
+
+- https://do-tracker.vercel.app
 
 ## 🔑 Default Login Credentials (After Seeding)
 
@@ -104,9 +111,11 @@ Your Supabase database is configured and ready. Just add these environment varia
 If you encounter issues after deployment:
 
 1. **Check Database Connection**
+
    ```
-   GET https://orderflow.vercel.app/api/health
+   GET https://do-tracker.vercel.app/api/health
    ```
+
    Should return: `{"ok": true, "db": "timestamp"}`
 
 2. **Check Vercel Function Logs**
