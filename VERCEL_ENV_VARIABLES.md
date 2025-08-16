@@ -1,4 +1,5 @@
 # Vercel Environment Vari### ✅ **App Status:**
+
 - **Live URL**: https://do-tracker.vercel.app
 - **Build**: ❌ FAILING - Missing DATABASE_URL
 - **Issue**: PrismaClientConstructorValidationError
