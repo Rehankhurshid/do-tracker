@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "buildCommand": "next build",
   "functions": {
     "src/app/api/auth/me/route.ts": {
       "maxDuration": 10
