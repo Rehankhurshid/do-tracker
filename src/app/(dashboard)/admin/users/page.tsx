@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { UserRole } from "@/types";
 
 export default function UserManagementPage() {
@@ -48,6 +49,8 @@ export default function UserManagementPage() {
     userId: "",
     username: "",
     hasData: false,
+    isCorrupted: false,
+    forceDelete: false,
   });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -202,7 +205,9 @@ export default function UserManagementPage() {
     
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/admin/users/${deleteDialog.userId}/delete`, {
+      // Add force parameter if this is a corrupted record or force delete is enabled
+      const forceParam = deleteDialog.forceDelete ? '?force=true' : '';
+      const response = await fetch(`/api/admin/users/${deleteDialog.userId}/delete${forceParam}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +225,14 @@ export default function UserManagementPage() {
             : `${deleteDialog.username} has been deactivated (had associated data)`,
         });
         fetchUserAndData();
-        setDeleteDialog({ open: false, userId: "", username: "", hasData: false });
+        setDeleteDialog({ 
+          open: false, 
+          userId: "", 
+          username: "", 
+          hasData: false, 
+          isCorrupted: false, 
+          forceDelete: false 
+        });
       } else {
         console.error("Delete user error:", data);
         
@@ -832,6 +844,18 @@ export default function UserManagementPage() {
                         <p className="text-sm text-amber-800 dark:text-amber-200">
                           <strong>Alternative:</strong> Consider deactivating the user instead if you might need to restore access later.
                         </p>
+                      </div>
+                      
+                      {/* Force Delete Option */}
+                      <div className="flex items-center space-x-2 mt-4">
+                        <Checkbox
+                          id="forceDelete"
+                          checked={deleteDialog.forceDelete}
+                          onCheckedChange={(checked) => setDeleteDialog({ ...deleteDialog, forceDelete: checked === true })}
+                        />
+                        <label htmlFor="forceDelete" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                          Force permanent deletion (even if user has associated data)
+                        </label>
                       </div>
                     </>
                   )}
