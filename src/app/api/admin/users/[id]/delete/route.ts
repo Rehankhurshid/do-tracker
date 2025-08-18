@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { verifyToken } from "@/lib/auth";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    // Get the userId from params - await it for Next.js 13+
-    const { id: userId } = await params;
+    // Get the userId from params
+    const { id: userId } = params;
     
     const token = request.cookies.get("token")?.value;
     if (!token) {
@@ -36,15 +36,12 @@ export async function DELETE(
     }
 
     // Check if user exists
-    const userToDelete = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        createdOrders: true,
-        reportedIssues: true,
-        resolvedIssues: true,
-        workflowActions: true,
-      },
-    });
+    const { data: userToDelete, error: findError } = await supabase
+      .from('User')
+      .select('id, username, email, isPasswordSet')
+      .eq('id', userId)
+      .single();
+    if (findError) throw findError;
 
     if (!userToDelete) {
       return NextResponse.json(
@@ -54,11 +51,18 @@ export async function DELETE(
     }
 
     // Check for data dependencies
-    const hasData = 
-      userToDelete.createdOrders.length > 0 ||
-      userToDelete.reportedIssues.length > 0 ||
-      userToDelete.resolvedIssues.length > 0 ||
-      userToDelete.workflowActions.length > 0;
+    // Check for related data via counts
+    const [createdOrders, reportedIssues, resolvedIssues, workflowActions] = await Promise.all([
+      supabase.from('DeliveryOrder').select('id', { count: 'exact', head: true }).eq('createdBy', userId),
+      supabase.from('Issue').select('id', { count: 'exact', head: true }).eq('reportedBy', userId),
+      supabase.from('Issue').select('id', { count: 'exact', head: true }).eq('resolvedBy', userId),
+      supabase.from('WorkflowHistory').select('id', { count: 'exact', head: true }).eq('actionBy', userId),
+    ]);
+    if (createdOrders.error) throw createdOrders.error;
+    if (reportedIssues.error) throw reportedIssues.error;
+    if (resolvedIssues.error) throw resolvedIssues.error;
+    if (workflowActions.error) throw workflowActions.error;
+    const hasData = (createdOrders.count || 0) > 0 || (reportedIssues.count || 0) > 0 || (resolvedIssues.count || 0) > 0 || (workflowActions.count || 0) > 0;
 
     // Check for force delete parameter
     const { searchParams } = new URL(request.url);
@@ -77,17 +81,20 @@ export async function DELETE(
         newEmail = `deleted_${Date.now()}_${userToDelete.email}`;
       }
       
-      const deactivatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
+      const { data: deactivatedUser, error: deactivateErr } = await supabase
+        .from('User')
+        .update({
           isActive: false,
           username: newUsername,
           email: newEmail,
-          password: null, // Clear password
+          password: null,
           resetToken: null,
           resetTokenExpiry: null,
-        },
-      });
+        })
+        .eq('id', userId)
+        .select('id')
+        .single();
+      if (deactivateErr) throw deactivateErr;
 
       // Log the deletion
       console.log(`User soft deleted by admin:`, {
@@ -116,9 +123,11 @@ export async function DELETE(
         console.warn(`FORCE DELETE: User ${userToDelete.username} has associated data but force delete was requested`);
       }
       
-      await prisma.user.delete({
-        where: { id: userId },
-      });
+      const { error: delErr } = await supabase
+        .from('User')
+        .delete()
+        .eq('id', userId);
+      if (delErr) throw delErr;
 
       // Log the deletion
       console.log(`User permanently deleted by admin:`, {

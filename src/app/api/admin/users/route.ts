@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { hashPassword } from '@/lib/auth';
 import { sendEmail, generatePasswordResetEmail } from '@/lib/email';
 
@@ -24,21 +24,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isPasswordSet: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const { data: users, error } = await supabase
+      .from('User')
+      .select('id, username, email, role, isActive, isPasswordSet, createdAt, updatedAt')
+      .order('createdAt', { ascending: false });
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch users' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(users);
   } catch (error) {
@@ -97,9 +94,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if username already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { username },
-    });
+    const { data: existingUser, error: usernameError } = await supabase
+      .from('User')
+      .select('id')
+      .eq('username', username)
+      .single();
 
     if (existingUser) {
       return NextResponse.json(
@@ -113,9 +112,11 @@ export async function POST(request: NextRequest) {
     
     // Check if email already exists (if provided)
     if (email) {
-      const existingEmail = await prisma.user.findUnique({
-        where: { email },
-      });
+      const { data: existingEmail, error: emailError } = await supabase
+        .from('User')
+        .select('id')
+        .eq('email', email)
+        .single();
       
       if (existingEmail) {
         return NextResponse.json(
@@ -128,7 +129,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let userData: any = {
+    let userData: Partial<{
+      username: string;
+      email: string | null;
+      role: string;
+      isActive: boolean;
+      password: string | null;
+      resetToken?: string;
+      resetTokenExpiry?: Date;
+      isPasswordSet: boolean;
+    }> = {
       username,
       email: email || null,
       role,
@@ -175,18 +185,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user
-    const user = await prisma.user.create({
-      data: userData,
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isPasswordSet: true,
-        createdAt: true,
-      },
-    });
+    const { data: user, error: createError } = await supabase
+      .from('User')
+      .insert([userData])
+      .select('id, username, email, role, isActive, isPasswordSet, createdAt')
+      .single();
+
+    if (createError) {
+      console.error('Create user error:', createError);
+      
+      // Handle unique constraint errors
+      if (createError.code === '23505') {
+        if (createError.message.includes('username')) {
+          return NextResponse.json(
+            { 
+              error: 'Username is already taken',
+              field: 'username'
+            },
+            { status: 409 }
+          );
+        } else if (createError.message.includes('email')) {
+          return NextResponse.json(
+            { 
+              error: 'Email is already registered',
+              field: 'email'
+            },
+            { status: 409 }
+          );
+        }
+      }
+      
+      return NextResponse.json(
+        { error: 'Failed to create user. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       ...user,
@@ -195,30 +228,8 @@ export async function POST(request: NextRequest) {
         ? `Invitation sent to ${email}. User can set password using the link sent to their email.`
         : 'User created successfully with the provided password.',
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Create user error:', error);
-    
-    // Handle Prisma unique constraint errors
-    if (error?.code === 'P2002') {
-      const field = error?.meta?.target?.[0];
-      if (field === 'username') {
-        return NextResponse.json(
-          { 
-            error: 'Username is already taken',
-            field: 'username'
-          },
-          { status: 409 }
-        );
-      } else if (field === 'email') {
-        return NextResponse.json(
-          { 
-            error: 'Email is already registered',
-            field: 'email'
-          },
-          { status: 409 }
-        );
-      }
-    }
     
     return NextResponse.json(
       { error: 'Failed to create user. Please try again.' },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,16 +22,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-      },
-    });
+    const { data: user, error: dbError } = await supabase
+      .from('User')
+      .select('id, username, email, role, isActive')
+      .eq('id', decoded.userId)
+      .single();
+
+    if (dbError) {
+      console.error('Database error:', dbError);
+      return NextResponse.json(
+        { error: 'Database error' },
+        { status: 500 }
+      );
+    }
 
     if (!user || !user.isActive) {
       return NextResponse.json(

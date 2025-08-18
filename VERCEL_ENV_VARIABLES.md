@@ -12,6 +12,14 @@
 DATABASE_URL
 ```
 
+**✅ UPDATED - Use postgres:// protocol (not postgresql://):**
+
+```
+postgres://postgres.zvszwrgquawnhitshifz:gz3E7EcJaP0aGXFp@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+```
+
+**❌ OLD (Causes "Tenant or user not found" error):**
+
 ```
 postgresql://postgres:gz3E7EcJaP0aGXFp@db.zvszwrgquawnhitshifz.supabase.co:5432/postgres
 ```

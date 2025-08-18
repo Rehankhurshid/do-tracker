@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,31 +27,55 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Force update the admin user to be active
-    const user = await prisma.user.upsert({
-      where: { username },
-      update: { 
+    // First try to update existing user
+    const { data: existingUser, error: updateError } = await supabase
+      .from('User')
+      .update({ 
         isActive: true,
         isPasswordSet: true 
-      },
-      create: {
-        username,
-        password: '$2a$12$KIGhpe3beG.wF7l3lPfPAOkc5aNdpX0r7Bd5ZL7k3QY1FGYpOsNzK', // hashed 'admin123'
-        email: `${username}@example.com`,
-        role: username === 'admin' ? 'ADMIN' : 'AREA_OFFICE',
-        isActive: true,
-        isPasswordSet: true,
-      },
-    });
+      })
+      .eq('username', username)
+      .select()
+      .single();
+
+    let user;
+    
+    if (updateError && updateError.code === 'PGRST116') {
+      // User doesn't exist, create new one
+      const { data: newUser, error: createError } = await supabase
+        .from('User')
+        .insert({
+          username,
+          password: '$2a$12$KIGhpe3beG.wF7l3lPfPAOkc5aNdpX0r7Bd5ZL7k3QY1FGYpOsNzK', // hashed 'admin123'
+          email: `${username}@example.com`,
+          role: username === 'admin' ? 'ADMIN' : 'AREA_OFFICE',
+          isActive: true,
+          isPasswordSet: true,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        throw new Error(`Failed to create user: ${createError.message}`);
+      }
+      
+      user = newUser;
+    } else if (updateError) {
+      throw new Error(`Failed to update user: ${updateError.message}`);
+    } else {
+      user = existingUser;
+    }
 
     // Also ensure other default users are active
     if (username === 'admin') {
-      await prisma.user.updateMany({
-        where: { 
-          username: { in: ['area_office', 'project_office', 'road_sale'] }
-        },
-        data: { isActive: true }
-      });
+      const { error: updateManyError } = await supabase
+        .from('User')
+        .update({ isActive: true })
+        .in('username', ['area_office', 'project_office', 'road_sale']);
+      
+      if (updateManyError) {
+        console.error('Failed to activate other users:', updateManyError);
+      }
     }
 
     return NextResponse.json({
@@ -67,10 +91,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Force activate error:', error);
     return NextResponse.json(
-      { error: 'Failed to activate user', details: error.message },
+      { error: 'Failed to activate user', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

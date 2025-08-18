@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -21,18 +21,24 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { email, fullName } = body;
+  const body = await request.json();
+  const { email } = body as { email?: string };
 
     // Check if email is already taken by another user
     if (email) {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          email,
-          NOT: { id: decoded.userId }
-        }
-      });
-
+      const { data: existingUser, error: findError } = await supabase
+        .from('User')
+        .select('id')
+        .eq('email', email)
+        .neq('id', decoded.userId)
+        .single();
+      if (findError && findError.code !== 'PGRST116') {
+        console.error('Error checking existing email:', findError);
+        return NextResponse.json(
+          { error: 'Database error' },
+          { status: 500 }
+        );
+      }
       if (existingUser) {
         return NextResponse.json(
           { error: 'Email already in use' },
@@ -42,24 +48,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update user profile
-    const updatedUser = await prisma.user.update({
-      where: { id: decoded.userId },
-      data: {
-        email: email || undefined,
-        // If your schema has a fullName field, uncomment the next line
-        // fullName: fullName || undefined,
-        updatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      }
-    });
+  const update: Partial<{ email: string; updatedAt: string }> = {
+      updatedAt: new Date().toISOString(),
+    };
+    if (email) update.email = email;
+    // if (fullName) update.fullName = fullName;
+
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('User')
+      .update(update)
+      .eq('id', decoded.userId)
+      .select('id, username, email, role, isActive, createdAt, updatedAt')
+      .single();
+    if (updateError) {
+      console.error('Profile update DB error:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update profile' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

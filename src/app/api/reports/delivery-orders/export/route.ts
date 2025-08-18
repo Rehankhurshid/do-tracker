@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -25,80 +25,57 @@ export async function GET(request: NextRequest) {
     const partyId = searchParams.get('partyId');
     const exportFormat = searchParams.get('format') || 'excel';
 
-    // Build where clause based on user role and filters
-    const whereClause: any = {};
+    // Build Supabase query with filters
+    let query = supabase
+      .from('DeliveryOrder')
+      .select(`
+        *,
+        party:Party(*),
+        createdBy:User!createdById (username, email),
+        issues:Issue (*,
+          reportedBy:User!reportedById (username)
+        )
+      `)
+      .order('createdAt', { ascending: false });
 
     // Role-based filtering - Department-wide visibility
     if (payload.role === 'AREA_OFFICE') {
-      // Area office can see all DOs at their stage
-      whereClause.status = {
-        in: ['created', 'at_area_office']
-      };
+      query = query.in('status', ['created', 'at_area_office']);
     } else if (payload.role === 'PROJECT_OFFICE') {
-      // Project office can see all DOs at their stage and beyond
-      whereClause.status = {
-        in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
-      };
+      query = query.in('status', ['at_project_office', 'received_at_project_office', 'at_road_sale']);
     } else if (payload.role === 'CISF') {
-      // CISF can see all DOs that need their approval or have been approved by them
-      whereClause.OR = [
-        { status: { in: ['at_project_office', 'received_at_project_office'] } },
-        { cisfApproved: true }
-      ];
+      query = query.or('status.in.(at_project_office,received_at_project_office),cisfApproved.eq.true');
     } else if (payload.role === 'ROAD_SALE') {
-      // Road Sale can see all DOs at their stage
-      whereClause.status = 'at_road_sale';
+      query = query.eq('status', 'at_road_sale');
     }
-    // Admin can see all (no filter added)
 
     // Date range filter
     if (startDate && endDate) {
-      whereClause.createdAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate + 'T23:59:59.999Z')
-      };
+      const startIso = new Date(startDate).toISOString();
+      const endIso = new Date(endDate + 'T23:59:59.999Z').toISOString();
+      query = query.gte('createdAt', startIso).lte('createdAt', endIso);
     }
 
     // Status filter
     if (status && status !== 'all') {
-      whereClause.status = status;
+      query = query.eq('status', status);
     }
 
     // Party filter
     if (partyId && partyId !== 'all') {
-      whereClause.partyId = partyId;
+      query = query.eq('partyId', partyId);
     }
 
-    // Fetch delivery orders
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      where: whereClause,
-      include: {
-        party: true,
-        createdBy: {
-          select: {
-            username: true,
-            email: true,
-          }
-        },
-        issues: {
-          include: {
-            reportedBy: {
-              select: {
-                username: true,
-              }
-            }
-          }
-        },
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const { data: deliveryOrders, error } = await query;
+    if (error) {
+      console.error('Supabase export reports query error:', error);
+      return NextResponse.json({ error: 'Failed to export report' }, { status: 500 });
+    }
 
     if (exportFormat === 'excel') {
-      return exportToExcel(deliveryOrders, payload);
+  return exportToExcel(deliveryOrders || [], payload);
     } else {
-      return exportToPDF(deliveryOrders, payload);
+  return exportToPDF(deliveryOrders || [], payload);
     }
   } catch (error) {
     console.error('Error exporting report:', error);
@@ -109,7 +86,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function exportToExcel(deliveryOrders: any[], user: any) {
+type IssueLite = { status: 'OPEN' | 'RESOLVED' };
+type PartyLite = { id: string; name: string };
+type OrderLite = {
+  doNumber: string;
+  party?: PartyLite | null;
+  authorizedPerson: string;
+  status: string;
+  createdAt: string;
+  validTo: string;
+  issues: IssueLite[];
+  createdBy?: { username?: string | null } | null;
+  notes?: string | null;
+};
+type UserLite = { username: string };
+
+function exportToExcel(deliveryOrders: OrderLite[], user: UserLite) {
   // Prepare data for Excel
   const excelData = deliveryOrders.map(order => ({
     'DO Number': order.doNumber,
@@ -118,8 +110,8 @@ function exportToExcel(deliveryOrders: any[], user: any) {
     'Status': formatStatus(order.status),
     'Created Date': format(new Date(order.createdAt), 'dd/MM/yyyy'),
     'Valid To': format(new Date(order.validTo), 'dd/MM/yyyy'),
-    'Open Issues': order.issues.filter((i: any) => i.status === 'OPEN').length,
-    'Resolved Issues': order.issues.filter((i: any) => i.status === 'RESOLVED').length,
+  'Open Issues': order.issues.filter((i: IssueLite) => i.status === 'OPEN').length,
+  'Resolved Issues': order.issues.filter((i: IssueLite) => i.status === 'RESOLVED').length,
     'Created By': order.createdBy?.username || '',
     'Notes': order.notes || '',
   }));
@@ -160,7 +152,7 @@ function exportToExcel(deliveryOrders: any[], user: any) {
   });
 }
 
-function exportToPDF(deliveryOrders: any[], user: any) {
+function exportToPDF(deliveryOrders: OrderLite[], user: UserLite) {
   // For PDF, we'll return a simple HTML that can be printed as PDF
   // In production, you might want to use a library like puppeteer or jsPDF
   

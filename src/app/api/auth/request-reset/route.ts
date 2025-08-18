@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { sendEmail, generatePasswordResetEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -15,9 +15,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const { data: user, error: findError } = await supabase
+      .from('User')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (findError && findError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      console.error('Database error:', findError);
+      return NextResponse.json(
+        { error: 'Database error' },
+        { status: 500 }
+      );
+    }
 
     // Always return success to prevent email enumeration
     if (!user) {
@@ -32,13 +42,21 @@ export async function POST(request: NextRequest) {
     const resetTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Update user with reset token
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
+    const { error: updateError } = await supabase
+      .from('User')
+      .update({
         resetToken,
-        resetTokenExpiry,
-      },
-    });
+        resetTokenExpiry: resetTokenExpiry.toISOString(),
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Failed to update reset token:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to process reset request' },
+        { status: 500 }
+      );
+    }
 
     // Generate reset link
     const resetLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;

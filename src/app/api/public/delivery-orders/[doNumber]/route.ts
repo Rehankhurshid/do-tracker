@@ -1,49 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ doNumber: string }> }
+  _request: NextRequest,
+  { params }: { params: { doNumber: string } }
 ) {
   try {
-    const { doNumber } = await params;
-    const deliveryOrder = await prisma.deliveryOrder.findUnique({
-      where: {
-        doNumber,
-      },
-      include: {
-        party: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        issues: {
-          select: {
-            id: true,
-            description: true,
-            status: true,
-            resolution: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-        workflowHistory: {
-          select: {
-            id: true,
-            fromStatus: true,
-            toStatus: true,
-            comments: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-    });
+    const { doNumber } = params;
+  const { data: deliveryOrders, error } = await supabase
+      .from('DeliveryOrder')
+      .select('*, party:Party(id, name), issues:Issue(id, description, status, resolution, createdAt), workflowHistory:WorkflowHistory(id, fromStatus, toStatus, comments, createdAt)')
+      .eq('doNumber', doNumber)
+      .limit(1);
+    if (error) throw error;
+    const deliveryOrder = deliveryOrders?.[0];
 
     if (!deliveryOrder) {
       return NextResponse.json(
@@ -53,18 +23,20 @@ export async function GET(
     }
 
     // Remove sensitive information
+    type Issue = { id: string; description: string; status: string; resolution?: string | null; createdAt: string };
+    type Hist = { id: string; fromStatus: string; toStatus: string; comments?: string | null; createdAt: string };
     const publicData = {
-      id: deliveryOrder.id,
-      doNumber: deliveryOrder.doNumber,
-      party: deliveryOrder.party,
-      authorizedPerson: deliveryOrder.authorizedPerson,
-      validFrom: deliveryOrder.validFrom,
-      validTo: deliveryOrder.validTo,
-      status: deliveryOrder.status,
-      notes: deliveryOrder.notes,
-      createdAt: deliveryOrder.createdAt,
-      issues: deliveryOrder.issues,
-      workflowHistory: deliveryOrder.workflowHistory,
+  id: deliveryOrder.id,
+  doNumber: deliveryOrder.doNumber,
+  party: deliveryOrder.party,
+  authorizedPerson: deliveryOrder.authorizedPerson,
+  validFrom: deliveryOrder.validFrom,
+  validTo: deliveryOrder.validTo,
+  status: deliveryOrder.status,
+      notes: (deliveryOrder as unknown as { notes?: string | null }).notes,
+  createdAt: deliveryOrder.createdAt,
+      issues: (deliveryOrder.issues as Issue[] | undefined || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      workflowHistory: (deliveryOrder.workflowHistory as Hist[] | undefined || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     };
 
     return NextResponse.json(publicData);

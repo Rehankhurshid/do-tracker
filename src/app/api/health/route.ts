@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    const rows = await prisma.$queryRawUnsafe<{ now: string }[]>("select now() as now")
-    return NextResponse.json({ ok: true, db: rows?.[0]?.now ?? null })
+    // Test database connection with a simple query
+    const { data, error } = await supabase
+      .from('User')
+      .select('count')
+      .limit(1)
+      .single()
+    
+    if (error) {
+      throw error
+    }
+    
+    return NextResponse.json({ ok: true, db: 'connected' })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

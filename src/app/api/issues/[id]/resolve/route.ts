@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
@@ -32,11 +32,13 @@ export async function POST(
     }
 
     // Get the issue
-    const issue = await prisma.issue.findUnique({
-      where: { id }
-    });
+    const { data: issue, error: fetchError } = await supabase
+      .from('Issue')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!issue) {
+    if (fetchError || !issue) {
       return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
     }
 
@@ -48,35 +50,32 @@ export async function POST(
     }
 
     // Update the issue
-    const updatedIssue = await prisma.issue.update({
-      where: { id },
-      data: {
+    const { data: updatedIssue, error: updateError } = await supabase
+      .from('Issue')
+      .update({
         status: 'RESOLVED',
         resolution,
         resolvedById: payload.userId,
-      },
-      include: {
-        deliveryOrder: {
-          include: {
-            party: true
-          }
-        },
-        reportedBy: {
-          select: {
-            id: true,
-            username: true,
-            role: true
-          }
-        },
-        resolvedBy: {
-          select: {
-            id: true,
-            username: true,
-            role: true
-          }
-        }
-      }
-    });
+      })
+      .eq('id', id)
+      .select(`
+        *,
+        deliveryOrder:DeliveryOrder!deliveryOrderId (
+          *,
+          party:Party!partyId (*)
+        ),
+        reportedBy:User!reportedById (id, username, role),
+        resolvedBy:User!resolvedById (id, username, role)
+      `)
+      .single();
+
+    if (updateError) {
+      console.error('Error updating issue:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to resolve issue' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(updatedIssue);
   } catch (error) {

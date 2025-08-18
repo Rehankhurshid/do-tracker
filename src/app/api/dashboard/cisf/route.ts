@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { verifyToken } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -15,55 +15,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Get counts for CISF dashboard
-    const [pendingApproval, approved, withIssues, totalProcessed] = await Promise.all([
-      // Orders pending CISF approval
-      prisma.deliveryOrder.count({
-        where: {
-          OR: [
-            { status: "at_project_office" },
-            { status: "received_at_project_office" },
-            { status: "project_approved" },
-          ],
-          cisfApproved: false,
-        },
-      }),
-      // Orders approved by CISF
-      prisma.deliveryOrder.count({
-        where: {
-          cisfApproved: true,
-        },
-      }),
-      // Orders with open issues reported by CISF
-      prisma.deliveryOrder.count({
-        where: {
-          issues: {
-            some: {
-              status: "OPEN",
-              reportedBy: {
-                role: "CISF",
-              },
-            },
-          },
-        },
-      }),
-      // Total orders processed by CISF (approved or with issues)
-      prisma.deliveryOrder.count({
-        where: {
-          OR: [
-            { cisfApproved: true },
-            {
-              issues: {
-                some: {
-                  reportedBy: {
-                    role: "CISF",
-                  },
-                },
-              },
-            },
-          ],
-        },
-      }),
+    const [pendingRes, approvedRes] = await Promise.all([
+      supabase
+        .from('DeliveryOrder')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ["at_project_office", "received_at_project_office", "project_approved"]) 
+        .eq('cisfApproved', false),
+      supabase
+        .from('DeliveryOrder')
+        .select('*', { count: 'exact', head: true })
+        .eq('cisfApproved', true),
     ]);
+
+    if (pendingRes.error) throw pendingRes.error;
+    if (approvedRes.error) throw approvedRes.error;
+
+    const pendingApproval = pendingRes.count || 0;
+    const approved = approvedRes.count || 0;
+
+    // Orders with open issues reported by CISF: need join-like query
+  const { data: issuesDOs, error: issuesErr } = await supabase
+      .from('Issue')
+      .select('delivery_order_id, status, reportedBy:User(role)')
+      .eq('status', 'OPEN')
+      .eq('reportedBy.role', 'CISF');
+    if (issuesErr) throw issuesErr;
+  type IssueRow = { delivery_order_id: string };
+  const withIssues = new Set((issuesDOs as IssueRow[] | null | undefined || []).map(i => i.delivery_order_id)).size;
+
+    // Total processed: approved or with issues
+    const totalProcessed = approved + withIssues;
 
     return NextResponse.json({
       pendingApproval,

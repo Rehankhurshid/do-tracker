@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
@@ -27,20 +27,41 @@ export async function DELETE(request: NextRequest) {
 
     // Delete in the correct order to respect foreign key constraints
     // 1. First delete workflow history
-    const deletedHistory = await prisma.workflowHistory.deleteMany({});
+    const { error: historyError, count: historyCount } = await supabase
+      .from('WorkflowHistory')
+      .delete()
+      .gte('id', 0); // This ensures all records are deleted
+    
+    if (historyError) {
+      throw new Error(`Failed to delete workflow history: ${historyError.message}`);
+    }
     
     // 2. Then delete issues
-    const deletedIssues = await prisma.issue.deleteMany({});
+    const { error: issuesError, count: issuesCount } = await supabase
+      .from('Issue')
+      .delete()
+      .gte('id', 0); // This ensures all records are deleted
+    
+    if (issuesError) {
+      throw new Error(`Failed to delete issues: ${issuesError.message}`);
+    }
     
     // 3. Finally delete delivery orders
-    const deletedOrders = await prisma.deliveryOrder.deleteMany({});
+    const { error: ordersError, count: ordersCount } = await supabase
+      .from('DeliveryOrder')
+      .delete()
+      .gte('id', 0); // This ensures all records are deleted
+    
+    if (ordersError) {
+      throw new Error(`Failed to delete delivery orders: ${ordersError.message}`);
+    }
 
     return NextResponse.json({
       message: 'All delivery orders and related data have been cleared successfully',
       deleted: {
-        deliveryOrders: deletedOrders.count,
-        issues: deletedIssues.count,
-        workflowHistory: deletedHistory.count,
+        deliveryOrders: ordersCount || 0,
+        issues: issuesCount || 0,
+        workflowHistory: historyCount || 0,
       }
     });
   } catch (error) {

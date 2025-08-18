@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { hashPassword } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -22,16 +22,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user with valid token
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gt: new Date(),
-        },
-      },
-    });
+    const { data: user, error: findError } = await supabase
+      .from('User')
+      .select('*')
+      .eq('resetToken', token)
+      .gt('resetTokenExpiry', new Date().toISOString())
+      .single();
 
-    if (!user) {
+    if (findError || !user) {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 400 }
@@ -42,15 +40,23 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password);
 
     // Update user password and clear reset token
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
+    const { error: updateError } = await supabase
+      .from('User')
+      .update({
         password: hashedPassword,
         isPasswordSet: true,
         resetToken: null,
         resetTokenExpiry: null,
-      },
-    });
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Failed to update user password:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to reset password' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

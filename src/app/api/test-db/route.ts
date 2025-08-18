@@ -1,34 +1,43 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
     // Test database connection
-    const userCount = await prisma.user.count();
+    const { count, error } = await supabase
+      .from('User')
+      .select('*', { count: 'exact', head: true });
     
-    // Get database URL (hide password)
-    const dbUrl = process.env.DATABASE_URL || 'not set';
-    const urlParts = dbUrl.split('@');
-    const safeUrl = urlParts.length > 1 ? 
-      urlParts[0].split(':').slice(0, -1).join(':') + ':****@' + urlParts[1] : 
-      'invalid format';
+    if (error) {
+      throw error;
+    }
+    
+    // Get Supabase URL (hide sensitive parts)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'not set';
+    const safeUrl = supabaseUrl !== 'not set' ? 
+      supabaseUrl.replace(/^(https?:\/\/[^.]+).*/, '$1.****') : 
+      'not set';
     
     return NextResponse.json({
       success: true,
-      userCount,
-      databaseUrl: safeUrl,
+      userCount: count || 0,
+      supabaseUrl: safeUrl,
+      supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set' : 'not set',
       environment: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Database test error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorCode = error instanceof Error && 'code' in error ? (error as { code: string }).code : 'UNKNOWN';
     
     return NextResponse.json({
       success: false,
-      error: error.message,
-      errorCode: error.code,
-      databaseUrl: process.env.DATABASE_URL ? 'set' : 'not set',
-      directUrl: process.env.DIRECT_URL ? 'set' : 'not set',
+      error: errorMessage,
+      errorCode,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'set' : 'not set',
+      supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set' : 'not set',
       environment: process.env.NODE_ENV
     }, { status: 500 });
   }

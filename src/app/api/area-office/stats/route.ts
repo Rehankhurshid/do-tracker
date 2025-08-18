@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,38 +24,33 @@ export async function GET(request: NextRequest) {
 
     // Fetch Area Office specific statistics - Department-wide visibility
     // Get all DOs currently at Area Office stage
-    const deliveryOrdersAtStage = await prisma.deliveryOrder.findMany({
-      where: {
-        status: {
-          in: ['created', 'at_area_office']
-        }
-      },
-      include: {
-        issues: {
-          where: { status: 'OPEN' }
-        }
-      }
-    });
+    const { data: stageDOs, error: stageErr } = await supabase
+      .from('DeliveryOrder')
+      .select('id, issues:Issue(status)')
+      .in('status', ['created', 'at_area_office']);
+    if (stageErr) throw stageErr;
 
     // Get total count of all DOs ever created
-    const totalCreated = await prisma.deliveryOrder.count();
+    const { count: totalCreated, error: totalErr } = await supabase
+      .from('DeliveryOrder')
+      .select('*', { count: 'exact', head: true });
+    if (totalErr) throw totalErr;
 
     // Get count of forwarded DOs (beyond Area Office stage)
-    const forwarded = await prisma.deliveryOrder.count({
-      where: {
-        status: {
-          notIn: ['created', 'at_area_office']
-        }
-      }
-    });
+    const { count: forwarded, error: fwdErr } = await supabase
+      .from('DeliveryOrder')
+      .select('*', { count: 'exact', head: true })
+      .not('status', 'in', '(created,at_area_office)');
+    if (fwdErr) throw fwdErr;
 
     // Pending forward are those currently at Area Office stage
-    const pendingForward = deliveryOrdersAtStage.length;
+  const pendingForward = (stageDOs || []).length;
 
     // Count DOs with open issues at Area Office stage
-    const withIssues = deliveryOrdersAtStage.filter(
-      do_ => do_.issues.length > 0
-    ).length;
+    type Issue = { status: string };
+    type StageDO = { issues?: Issue[] };
+    const withIssues = (stageDOs as StageDO[] | null | undefined || [])
+      .filter(do_ => Array.isArray(do_.issues) && (do_.issues as Issue[]).some(i => i.status === 'OPEN')).length;
 
     const response = NextResponse.json({
       totalCreated,

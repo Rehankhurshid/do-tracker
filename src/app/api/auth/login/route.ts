@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyPassword, generateToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -21,9 +21,16 @@ export async function POST(request: NextRequest) {
 
     // Find user by username
     console.log('Looking up user in database...');
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    const { data: user, error: dbError } = await supabase
+      .from('User')
+      .select('*')
+      .eq('username', username)
+      .single();
+
+    if (dbError && dbError.code !== 'PGRST116') {
+      console.error('Database error:', dbError);
+      throw dbError;
+    }
 
     console.log('User found:', user ? 'Yes' : 'No');
     console.log('User active:', user?.isActive);
@@ -62,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token
-    const token = generateToken(user.id, user.username, user.role as any);
+    const token = generateToken(user.id, user.username, user.role);
 
     // Create response with cookie
     const response = NextResponse.json({
@@ -95,13 +102,19 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Login error:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('Error message:', errorMessage);
+    if (errorStack) {
+      console.error('Error stack:', errorStack);
+    }
     
     // Check if it's a database connection error
-    if (error.message?.includes('connect') || error.message?.includes('ECONNREFUSED')) {
+    if (errorMessage.includes('connect') || errorMessage.includes('ECONNREFUSED')) {
       return NextResponse.json(
         { error: 'Database connection error. Please check server logs.' },
         { status: 500 }
@@ -109,7 +122,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: errorMessage },
       { status: 500 }
     );
   }

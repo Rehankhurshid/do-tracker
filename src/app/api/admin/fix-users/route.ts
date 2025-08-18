@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,47 +14,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all users first
-    const allUsers = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isPasswordSet: true,
-      },
-    });
+    const { data: allUsers, error: getAllError } = await supabase
+      .from('User')
+      .select('id, username, email, role, isActive, isPasswordSet');
+
+    if (getAllError) {
+      throw new Error(`Failed to get users: ${getAllError.message}`);
+    }
 
     // Reactivate all deactivated users
-    const reactivatedUsers = await prisma.user.updateMany({
-      where: { isActive: false },
-      data: { isActive: true },
-    });
+    const { data: reactivatedUsers, error: updateError } = await supabase
+      .from('User')
+      .update({ isActive: true })
+      .eq('isActive', false)
+      .select();
+
+    if (updateError) {
+      throw new Error(`Failed to reactivate users: ${updateError.message}`);
+    }
 
     // Get updated users
-    const updatedUsers = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isPasswordSet: true,
-      },
-    });
+    const { data: updatedUsers, error: getUpdatedError } = await supabase
+      .from('User')
+      .select('id, username, email, role, isActive, isPasswordSet');
+
+    if (getUpdatedError) {
+      throw new Error(`Failed to get updated users: ${getUpdatedError.message}`);
+    }
 
     return NextResponse.json({
       success: true,
       message: 'User status fixed',
-      beforeFix: allUsers,
-      reactivatedCount: reactivatedUsers.count,
-      afterFix: updatedUsers,
+      beforeFix: allUsers || [],
+      reactivatedCount: reactivatedUsers?.length || 0,
+      afterFix: updatedUsers || [],
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Fix users error:', error);
     return NextResponse.json(
-      { error: 'Failed to fix users', details: error.message },
+      { error: 'Failed to fix users', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -74,32 +73,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isPasswordSet: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    const { data: users, error } = await supabase
+      .from('User')
+      .select('id, username, email, role, isActive, isPasswordSet, createdAt, updatedAt')
+      .order('createdAt', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to get users: ${error.message}`);
+    }
+
+    const usersList = users || [];
 
     return NextResponse.json({
       success: true,
-      totalUsers: users.length,
-      activeUsers: users.filter(u => u.isActive).length,
-      inactiveUsers: users.filter(u => !u.isActive).length,
-      users,
+      totalUsers: usersList.length,
+      activeUsers: usersList.filter(u => u.isActive).length,
+      inactiveUsers: usersList.filter(u => !u.isActive).length,
+      users: usersList,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Get users error:', error);
     return NextResponse.json(
-      { error: 'Failed to get users', details: error.message },
+      { error: 'Failed to get users', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

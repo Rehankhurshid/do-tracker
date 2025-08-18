@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
@@ -13,12 +13,17 @@ export async function GET() {
     // Try to connect to database and count users
     let dbStatus = 'not connected';
     let userCount = 0;
-    
+
     try {
-      userCount = await prisma.user.count();
+      const { count, error } = await supabase
+        .from('User')
+        .select('*', { count: 'exact', head: true });
+      if (error) throw error;
+      userCount = count || 0;
       dbStatus = 'connected';
-    } catch (error: any) {
-      dbStatus = `error: ${error.message}`;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      dbStatus = `error: ${message}`;
     }
 
     return NextResponse.json({
@@ -29,11 +34,11 @@ export async function GET() {
       },
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Debug endpoint error',
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
     );

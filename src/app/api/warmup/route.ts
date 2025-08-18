@@ -1,11 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
 // Warmup endpoint to prevent cold starts
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Simple database query to keep connection warm
-    await prisma.$queryRaw`SELECT 1`;
+    // Simple lightweight query to keep Supabase/PostgREST warm
+    const { error } = await supabase
+      .from('User')
+      .select('*', { count: 'exact', head: true });
+    if (error) throw error;
     
     const response = NextResponse.json({ 
       status: 'warm',
@@ -16,7 +19,7 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     
     return response;
-  } catch (error) {
+  } catch {
     return NextResponse.json({ 
       status: 'error',
       timestamp: new Date().toISOString() 

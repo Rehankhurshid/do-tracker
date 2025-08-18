@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,22 +13,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gt: new Date(),
-        },
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        isPasswordSet: true,
-      },
-    });
+    const { data: user, error: findError } = await supabase
+      .from('User')
+      .select('id, username, email, isPasswordSet')
+      .eq('resetToken', token)
+      .gt('resetTokenExpiry', new Date().toISOString())
+      .single();
 
-    if (!user) {
+    if (findError || !user) {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 400 }

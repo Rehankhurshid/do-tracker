@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 
 // Update party
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -24,25 +24,25 @@ export async function PATCH(
     const { name, contactPerson, phone, email, address } = body;
 
     // Check if party exists
-    const existingParty = await prisma.party.findUnique({
-      where: { id }
-    });
+    const { data: existingParty, error: findError } = await supabase
+      .from('Party')
+      .select('id')
+      .eq('id', id)
+      .single();
+    if (findError && findError.code !== 'PGRST116') throw findError;
 
     if (!existingParty) {
       return NextResponse.json({ error: 'Party not found' }, { status: 404 });
     }
 
     // Update party
-    const updatedParty = await prisma.party.update({
-      where: { id },
-      data: {
-        name,
-        contactPerson,
-        phone,
-        email,
-        address
-      }
-    });
+    const { data: updatedParty, error: updateError } = await supabase
+      .from('Party')
+      .update({ name, contactPerson, phone, email, address })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (updateError) throw updateError;
 
     return NextResponse.json(updatedParty);
   } catch (error) {
@@ -57,10 +57,10 @@ export async function PATCH(
 // Delete party
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -73,13 +73,13 @@ export async function DELETE(
     }
 
     // Archive the party instead of deleting
-    const party = await prisma.party.update({
-      where: { id },
-      data: { 
-        isArchived: true,
-        archivedAt: new Date()
-      }
-    });
+    const { data: party, error } = await supabase
+      .from('Party')
+      .update({ isArchived: true, archivedAt: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
 
     return NextResponse.json({ 
       message: 'Party archived successfully',
@@ -97,10 +97,10 @@ export async function DELETE(
 // Restore archived party
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -120,13 +120,13 @@ export async function POST(
     }
 
     // Restore the party
-    const party = await prisma.party.update({
-      where: { id },
-      data: { 
-        isArchived: false,
-        archivedAt: null
-      }
-    });
+    const { data: party, error } = await supabase
+      .from('Party')
+      .update({ isArchived: false, archivedAt: null })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
 
     return NextResponse.json({ 
       message: 'Party restored successfully',

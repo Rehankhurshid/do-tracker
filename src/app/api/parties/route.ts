@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
@@ -17,13 +17,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const parties = await prisma.party.findMany({
-      orderBy: {
-        name: 'asc'
-      }
-    });
+    const { data: parties, error } = await supabase
+      .from('Party')
+      .select('*')
+      .order('name', { ascending: true });
 
-    return NextResponse.json(parties);
+    if (error) {
+      console.error('Error fetching parties:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch parties' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(parties || []);
   } catch (error) {
     console.error('Error fetching parties:', error);
     return NextResponse.json(
@@ -59,9 +66,19 @@ export async function POST(request: NextRequest) {
     const { name, contactPerson, phone, email, address } = body;
 
     // Check if party already exists
-    const existingParty = await prisma.party.findUnique({
-      where: { name }
-    });
+    const { data: existingParty, error: checkError } = await supabase
+      .from('Party')
+      .select('id')
+      .eq('name', name)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking party:', checkError);
+      return NextResponse.json(
+        { error: 'Failed to check existing party' },
+        { status: 500 }
+      );
+    }
 
     if (existingParty) {
       return NextResponse.json(
@@ -70,15 +87,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const party = await prisma.party.create({
-      data: {
+    const { data: party, error: createError } = await supabase
+      .from('Party')
+      .insert({
         name,
         contactPerson,
         phone,
         email,
         address,
-      }
-    });
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating party:', createError);
+      return NextResponse.json(
+        { error: 'Failed to create party' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(party, { status: 201 });
   } catch (error) {

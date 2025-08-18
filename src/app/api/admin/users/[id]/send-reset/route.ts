@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { sendEmail, generatePasswordResetEmail } from '@/lib/email';
 import { verifyToken } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     // Verify admin authentication
     const token = request.cookies.get('token')?.value;
     
@@ -28,9 +28,12 @@ export async function POST(
     }
 
     // Find the user to send reset email to
-    const targetUser = await prisma.user.findUnique({
-      where: { id },
-    });
+    const { data: targetUser, error: findError } = await supabase
+      .from('User')
+      .select('id, email, username, isPasswordSet')
+      .eq('id', id)
+      .single();
+    if (findError) throw findError;
 
     if (!targetUser) {
       return NextResponse.json(
@@ -51,13 +54,14 @@ export async function POST(
     const resetTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Update user with reset token
-    await prisma.user.update({
-      where: { id },
-      data: {
+    const { error: updateError } = await supabase
+      .from('User')
+      .update({
         resetToken,
         resetTokenExpiry,
-      },
-    });
+      })
+      .eq('id', id);
+    if (updateError) throw updateError;
 
     // Generate reset link
     const resetLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;

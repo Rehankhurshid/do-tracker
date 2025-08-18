@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,10 +21,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Find and reactivate the user
-    const user = await prisma.user.update({
-      where: { username },
-      data: { isActive: true },
-    });
+    const { data: user, error } = await supabase
+      .from('User')
+      .update({ isActive: true })
+      .eq('username', username)
+      .select('*')
+      .single();
+
+    if (error || !user) {
+      if (error?.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      throw error || new Error('User not found');
+    }
 
     return NextResponse.json({
       success: true,
@@ -38,18 +50,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Reactivate error:', error);
     
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-    
     return NextResponse.json(
-      { error: 'Failed to reactivate user', details: error.message },
+      { error: 'Failed to reactivate user', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

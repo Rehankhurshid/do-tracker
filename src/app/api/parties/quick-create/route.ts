@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -34,14 +34,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if party already exists
-    const existingParty = await prisma.party.findFirst({
-      where: {
-        name: {
-          equals: name.trim(),
-          mode: 'insensitive'
-        }
-      }
-    });
+    const { data: existingParty, error: checkError } = await supabase
+      .from('Party')
+      .select('*')
+      .ilike('name', name.trim())
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking party:', checkError);
+      return NextResponse.json(
+        { error: 'Failed to check party' },
+        { status: 500 }
+      );
+    }
 
     if (existingParty) {
       return NextResponse.json(
@@ -51,15 +56,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the party with minimal details
-    const party = await prisma.party.create({
-      data: {
+    const { data: party, error: createError } = await supabase
+      .from('Party')
+      .insert({
         name: name.trim(),
         email: '', // Can be updated later
         phone: '', // Can be updated later
         address: '', // Can be updated later
         contactPerson: '', // Can be updated later
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating party:', createError);
+      return NextResponse.json(
+        { error: 'Failed to create party' },
+        { status: 500 }
+      );
+    }
 
     console.log(`Quick party created:`, {
       partyId: party.id,

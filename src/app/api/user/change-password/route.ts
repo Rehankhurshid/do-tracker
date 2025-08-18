@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, verifyPassword, hashPassword } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,14 +39,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user with password
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        password: true,
-        isPasswordSet: true,
-      }
-    });
+    const { data: user, error: findError } = await supabase
+      .from('User')
+      .select('id, password, isPasswordSet')
+      .eq('id', decoded.userId)
+      .single();
+    if (findError) {
+      console.error('Find user error:', findError);
+      return NextResponse.json(
+        { error: 'Database error' },
+        { status: 500 }
+      );
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -70,14 +74,21 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(newPassword);
 
     // Update password
-    await prisma.user.update({
-      where: { id: decoded.userId },
-      data: {
+    const { error: updateError } = await supabase
+      .from('User')
+      .update({
         password: hashedPassword,
         isPasswordSet: true,
-        updatedAt: new Date(),
-      }
-    });
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', decoded.userId);
+    if (updateError) {
+      console.error('Update password error:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to change password' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

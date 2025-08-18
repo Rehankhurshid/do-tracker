@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,17 +22,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch Road Sale specific statistics
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      where: {
-        status: 'at_road_sale'
-      },
-      include: {
-        issues: {
-          where: { status: 'OPEN' }
-        }
-      }
-    });
+    // Fetch Road Sale specific statistics via Supabase
+    const { data, error } = await supabase
+      .from('DeliveryOrder')
+      .select(`
+        *,
+        issues:Issue (*)
+      `)
+      .eq('status', 'at_road_sale');
+
+    if (error) {
+      console.error('Supabase fetch error (road-sale stats):', error);
+      return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
+    }
+
+    const deliveryOrders = (data || []) as Array<{
+      updatedAt: string;
+      issues?: Array<{ status: string }> | null;
+    }>;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -41,9 +48,7 @@ export async function GET(request: NextRequest) {
     const receivedToday = deliveryOrders.filter(
       do_ => new Date(do_.updatedAt) >= today
     ).length;
-    const withIssues = deliveryOrders.filter(
-      do_ => do_.issues.length > 0
-    ).length;
+  const withIssues = deliveryOrders.filter((do_) => (do_.issues || []).some((i) => i.status === 'OPEN')).length;
     const totalCompleted = totalReceived; // All at Road Sale are completed
 
     return NextResponse.json({

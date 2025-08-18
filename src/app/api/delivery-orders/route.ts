@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateDOCreatedEmail, sendEmail } from '@/lib/email';
 import { requireAuth, ok, fail, parseJson } from '@/app/api/_helpers/handler';
 import { createDO, listForUser } from '@/services/deliveryOrders';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,11 +66,19 @@ export async function POST(request: NextRequest) {
         let recipients: string[] = configured;
         if (recipients.length === 0) {
           // Fallback: all active AREA_OFFICE users with email
-          const areaUsers = await prisma.user.findMany({
-            where: { role: 'AREA_OFFICE', isActive: true, email: { not: null } },
-            select: { email: true },
-          });
-          recipients = areaUsers.map(u => u.email!).filter(Boolean);
+          const { data: areaUsers, error } = await supabase
+            .from('User')
+            .select('email')
+            .eq('role', 'AREA_OFFICE')
+            .eq('isActive', true)
+            .not('email', 'is', null);
+          
+          if (error) {
+            console.error('[DO Created Email] Error fetching area office users:', error);
+            recipients = [];
+          } else {
+            recipients = (areaUsers || []).map(u => u.email).filter(Boolean);
+          }
         }
 
         if (recipients.length === 0) {

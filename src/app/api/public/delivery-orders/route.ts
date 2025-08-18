@@ -1,26 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      include: {
-        party: true,
-        issues: {
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-        workflowHistory: {
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const { data, error } = await supabase
+      .from('DeliveryOrder')
+      .select('*, party:Party(*), issues:Issue(*), workflowHistory:WorkflowHistory(*)')
+      .order('createdAt', { ascending: false });
+    if (error) throw error;
+    // Sort nested arrays client-side by createdAt desc
+    type Issue = { createdAt: string } & Record<string, unknown>;
+    type Workflow = { createdAt: string } & Record<string, unknown>;
+    const deliveryOrders = (data || []).map((d: Record<string, unknown> & { issues?: Issue[]; workflowHistory?: Workflow[] }) => ({
+      ...d,
+      issues: (d.issues || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      workflowHistory: (d.workflowHistory || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    }));
 
     return NextResponse.json(deliveryOrders);
   } catch (error) {

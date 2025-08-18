@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -22,112 +22,90 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const partyId = searchParams.get('partyId');
 
-    // Build where clause based on user role and filters
-    const whereClause: any = {};
+    // Build Supabase query with role/date/status/party filters
+    let query = supabase
+      .from('DeliveryOrder')
+      .select(`
+        *,
+        party:Party(*),
+        createdBy:User!createdById (username, email),
+        issues:Issue (*,
+          reportedBy:User!reportedById (username),
+          resolvedBy:User!resolvedById (username)
+        ),
+        workflowHistory:WorkflowHistory (*,
+          actionBy:User!actionById (username)
+        )
+      `)
+      .order('createdAt', { ascending: false });
 
     // Role-based filtering - Department-wide visibility
     if (payload.role === 'AREA_OFFICE') {
-      // Area office can see all DOs at their stage
-      whereClause.status = {
-        in: ['created', 'at_area_office']
-      };
+      query = query.in('status', ['created', 'at_area_office']);
     } else if (payload.role === 'PROJECT_OFFICE') {
-      // Project office can see all DOs at their stage and beyond
-      whereClause.status = {
-        in: ['at_project_office', 'received_at_project_office', 'at_road_sale']
-      };
+      query = query.in('status', ['at_project_office', 'received_at_project_office', 'at_road_sale']);
     } else if (payload.role === 'CISF') {
-      // CISF can see all DOs that need their approval or have been approved by them
-      whereClause.OR = [
-        { status: { in: ['at_project_office', 'received_at_project_office'] } },
-        { cisfApproved: true }
-      ];
+      // At stage or already approved by CISF
+      query = query.or('status.in.(at_project_office,received_at_project_office),cisfApproved.eq.true');
     } else if (payload.role === 'ROAD_SALE') {
-      // Road Sale can see all DOs at their stage
-      whereClause.status = 'at_road_sale';
+      query = query.eq('status', 'at_road_sale');
     }
-    // Admin can see all (no filter added)
 
     // Date range filter
     if (startDate && endDate) {
-      whereClause.createdAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate + 'T23:59:59.999Z')
-      };
+      const startIso = new Date(startDate).toISOString();
+      const endIso = new Date(endDate + 'T23:59:59.999Z').toISOString();
+      query = query.gte('createdAt', startIso).lte('createdAt', endIso);
     }
 
-    // Status filter
+    // Status filter overrides role-based status when provided
     if (status && status !== 'all') {
-      whereClause.status = status;
+      query = query.eq('status', status);
     }
 
     // Party filter
     if (partyId && partyId !== 'all') {
-      whereClause.partyId = partyId;
+      query = query.eq('partyId', partyId);
     }
 
-    // Fetch delivery orders with all related data
-    const deliveryOrders = await prisma.deliveryOrder.findMany({
-      where: whereClause,
-      include: {
-        party: true,
-        createdBy: {
-          select: {
-            username: true,
-            email: true,
-          }
-        },
-        issues: {
-          include: {
-            reportedBy: {
-              select: {
-                username: true,
-              }
-            },
-            resolvedBy: {
-              select: {
-                username: true,
-              }
-            }
-          }
-        },
-        workflowHistory: {
-          include: {
-            actionBy: {
-              select: {
-                username: true,
-              }
-            }
-          },
-          orderBy: {
-            timestamp: 'desc'
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const { data: deliveryOrders, error } = await query;
+    if (error) {
+      console.error('Supabase reports query error:', error);
+      return NextResponse.json({ error: 'Failed to fetch report data' }, { status: 500 });
+    }
+
+    // Narrow types for stats calculation
+    type IssueLite = { status: 'OPEN' | 'RESOLVED' };
+    type PartyLite = { id: string; name: string };
+    type WorkflowLite = { toStatus: string; createdAt?: string; timestamp?: string };
+    type OrderLite = {
+      status: string;
+      createdAt: string;
+      issues: IssueLite[];
+      party?: PartyLite | null;
+      workflowHistory: WorkflowLite[];
+    };
+    const orders = (deliveryOrders || []) as unknown as OrderLite[];
 
     // Calculate statistics
     const stats = {
-      total: deliveryOrders.length,
+      total: orders.length,
       byStatus: {
-        created: deliveryOrders.filter(d => d.status === 'created').length,
-        at_area_office: deliveryOrders.filter(d => d.status === 'at_area_office').length,
-        at_project_office: deliveryOrders.filter(d => d.status === 'at_project_office').length,
-        received_at_project_office: deliveryOrders.filter(d => d.status === 'received_at_project_office').length,
-        at_road_sale: deliveryOrders.filter(d => d.status === 'at_road_sale').length,
+        created: orders.filter(d => d.status === 'created').length,
+        at_area_office: orders.filter(d => d.status === 'at_area_office').length,
+        at_project_office: orders.filter(d => d.status === 'at_project_office').length,
+        received_at_project_office: orders.filter(d => d.status === 'received_at_project_office').length,
+        at_road_sale: orders.filter(d => d.status === 'at_road_sale').length,
       },
-      withIssues: deliveryOrders.filter(d => d.issues.length > 0).length,
-      resolvedIssues: deliveryOrders.filter(d => 
-        d.issues.length > 0 && d.issues.every(i => i.status === 'RESOLVED')
+      withIssues: orders.filter(d => d.issues && d.issues.length > 0).length,
+      resolvedIssues: orders.filter(d => 
+        d.issues && d.issues.length > 0 && d.issues.every((i: IssueLite) => i.status === 'RESOLVED')
       ).length,
-      pendingIssues: deliveryOrders.filter(d => 
-        d.issues.some(i => i.status === 'OPEN')
+      pendingIssues: orders.filter(d => 
+        (d.issues || []).some((i: IssueLite) => i.status === 'OPEN')
       ).length,
-      avgProcessingTime: calculateAvgProcessingTime(deliveryOrders),
-      topParties: getTopParties(deliveryOrders),
+      avgProcessingTime: calculateAvgProcessingTime(orders),
+      topParties: getTopParties(orders),
     };
 
     return NextResponse.json({
@@ -149,15 +127,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function calculateAvgProcessingTime(orders: any[]): number {
+function calculateAvgProcessingTime(orders: { status: string; createdAt: string; workflowHistory: { toStatus: string; createdAt?: string; timestamp?: string }[] }[]): number {
   const completedOrders = orders.filter(o => o.status === 'at_road_sale');
   if (completedOrders.length === 0) return 0;
 
   const totalTime = completedOrders.reduce((sum, order) => {
     const created = new Date(order.createdAt).getTime();
-    const completed = order.workflowHistory.find((h: any) => h.toStatus === 'at_road_sale');
+  // Prefer createdAt for workflow history entries (consistent with other routes)
+  const completed = order.workflowHistory.find((h) => h.toStatus === 'at_road_sale');
     if (completed) {
-      const completedTime = new Date(completed.timestamp).getTime();
+      const completedIso = completed.createdAt ?? completed.timestamp ?? order.createdAt;
+      const completedTime = new Date(completedIso).getTime();
       return sum + (completedTime - created);
     }
     return sum;
@@ -166,8 +146,8 @@ function calculateAvgProcessingTime(orders: any[]): number {
   return Math.round(totalTime / completedOrders.length / (1000 * 60 * 60)); // Return in hours
 }
 
-function getTopParties(orders: any[]): any[] {
-  const partyCount: { [key: string]: { name: string; count: number } } = {};
+function getTopParties(orders: { party?: { id: string; name: string } | null }[]): { name: string; count: number }[] {
+  const partyCount: Record<string, { name: string; count: number }> = {};
   
   orders.forEach(order => {
     if (order.party) {

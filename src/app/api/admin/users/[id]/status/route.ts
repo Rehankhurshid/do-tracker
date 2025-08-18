@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
@@ -27,17 +27,15 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { isActive } = body;
+    const { isActive } = body as { isActive: boolean };
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: { isActive },
-      select: {
-        id: true,
-        username: true,
-        isActive: true,
-      },
-    });
+    const { data: user, error } = await supabase
+      .from('User')
+      .update({ isActive })
+      .eq('id', id)
+      .select('id, username, isActive')
+      .single();
+    if (error) throw error;
 
     return NextResponse.json(user);
   } catch (error) {

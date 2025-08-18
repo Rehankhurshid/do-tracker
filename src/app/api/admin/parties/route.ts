@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,21 +26,61 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const includeArchived = searchParams.get('includeArchived') === 'true';
 
-    const parties = await prisma.party.findMany({
-      where: includeArchived ? {} : { isArchived: false },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        _count: {
-          select: {
-            deliveryOrders: true
-          }
-        }
-      }
-    });
+    // Build query based on includeArchived parameter
+    let query = supabase
+      .from('Party')
+      .select('*')
+      .order('createdAt', { ascending: false });
 
-    return NextResponse.json(parties);
+    if (!includeArchived) {
+      query = query.eq('isArchived', false);
+    }
+
+    const { data: parties, error } = await query;
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch parties' },
+        { status: 500 }
+      );
+    }
+
+    // Get delivery order counts for each party
+    const partyIds = parties?.map((party) => party.id) || [];
+    
+    if (partyIds.length > 0) {
+      const { data: deliveryOrderCounts, error: countError } = await supabase
+        .from('DeliveryOrder')
+        .select('partyId')
+        .in('partyId', partyIds);
+
+      if (!countError && deliveryOrderCounts) {
+        // Count delivery orders per party
+        const countMap = deliveryOrderCounts.reduce((acc, do_) => {
+          acc[do_.partyId] = (acc[do_.partyId] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        // Add _count property to match Prisma response format
+        parties?.forEach((party) => {
+          const partyWithCount = party as any;
+          partyWithCount._count = {
+            deliveryOrders: countMap[party.id] || 0
+          };
+        });
+      }
+    } else {
+      // No parties, but still add _count for consistency
+      parties?.forEach((party) => {
+        const partyWithCount = party as any;
+        partyWithCount._count = {
+          deliveryOrders: 0
+        };
+      });
+    }
+
+    return NextResponse.json(parties || []);
   } catch (error) {
     console.error('Get parties error:', error);
     return NextResponse.json(
@@ -81,9 +121,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if party name already exists
-    const existingParty = await prisma.party.findUnique({
-      where: { name },
-    });
+    const { data: existingParty, error: checkError } = await supabase
+      .from('Party')
+      .select('id')
+      .eq('name', name)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Check party error:', checkError);
+      return NextResponse.json(
+        { error: 'Failed to check existing party' },
+        { status: 500 }
+      );
+    }
 
     if (existingParty) {
       return NextResponse.json(
@@ -93,15 +143,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Create party
-    const party = await prisma.party.create({
-      data: {
+    const { data: party, error: createError } = await supabase
+      .from('Party')
+      .insert({
         name,
         contactPerson: contactPerson || null,
         phone: phone || null,
         email: email || null,
         address: address || null,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Create party error:', createError);
+      return NextResponse.json(
+        { error: 'Failed to create party' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(party);
   } catch (error) {
