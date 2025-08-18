@@ -11,6 +11,7 @@ export function middleware(request: NextRequest) {
     '/reset-password', 
     '/consumer',
     '/api/auth/login',
+  '/api/auth/me',
     '/api/auth/logout', // Add logout to public paths
     '/api/auth/reset-password',
     '/api/auth/check-user',
