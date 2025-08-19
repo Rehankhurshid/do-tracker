@@ -33,11 +33,16 @@ export function middleware(request: NextRequest) {
   }
 
   // Redirect to dashboard if accessing login with token
-  if (path === '/login' && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
+  // Note: Do not auto-redirect from /login based on token presence, as stale/invalid
+  // cookies can cause redirect loops (especially on mobile caches). Let the page
+  // verify with /api/auth/me and decide client-side.
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  // Reduce cache issues on mobile: ensure protected routes are not cached
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.headers.set('Pragma', 'no-cache');
+  res.headers.set('Expires', '0');
+  return res;
 }
 
 export const config = {
